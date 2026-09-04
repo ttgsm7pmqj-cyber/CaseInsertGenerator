@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: LGPL-2.1-or-later
+"""Compatibility launcher for the installed Case Insert Generator add-on."""
+
+from freecad.CaseInsertGenerator.bridge import (
+    generate_insert,
+    generate_lid_panel_project,
+    generate_project,
+    load_case_catalog,
+    load_project,
+    preview_lid_panel_project,
+    show_dialog,
+)
+
+
+if __name__ == "__main__":
+    show_dialog()

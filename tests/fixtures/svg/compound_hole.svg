@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-FileCopyrightText: Case Insert Generator contributors -->
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<svg xmlns="http://www.w3.org/2000/svg" width="70mm" height="45mm" viewBox="0 0 70 45">
+  <path fill="#000" fill-rule="evenodd" stroke="none"
+        d="M 0,0 H 40 V 40 H 0 Z M 10,10 H 30 V 30 H 10 Z M 50,0 H 60 V 10 H 50 Z"/>
+</svg>

@@ -1,0 +1,434 @@
+{
+  "compatibility_claim": "none",
+  "description": "Camera body, lens, blower, film or media, and cleaning tools.",
+  "geometry_provenance": "synthetic-demonstration",
+  "id": "theme.analog-camera-care.v1",
+  "number": 5,
+  "physical_fit_status": "unverified",
+  "project": {
+    "case": {
+      "bottom_clearance": 0.8,
+      "case_model": "Custom Case",
+      "compatibility_claim": "none",
+      "corner_radius": 12.0,
+      "geometry_provenance": "synthetic-demonstration",
+      "insert_depth": 70.0,
+      "internal_length": 300.0,
+      "internal_width": 210.0,
+      "layout_inset": 0.0,
+      "side_clearance": 1.0,
+      "taper_allowance": 0.4
+    },
+    "containment": {
+      "clearance_mm": 0.4,
+      "mode": "individual_lids",
+      "panel_thickness_mm": 2.0
+    },
+    "layers": {
+      "enabled": true,
+      "floor_mm": 2.4,
+      "ratio": 0.6
+    },
+    "lid": {
+      "clearance_mm": null,
+      "envelope_source": "unknown",
+      "length_mm": null,
+      "source": "unknown",
+      "width_mm": null
+    },
+    "lid_panel": {
+      "corner_radius_mm": 6.0,
+      "edge_inset_mm": 4.0,
+      "enabled": false,
+      "keepouts": {
+        "clearance_margin_mm": 3.0,
+        "hinge_edge": "top",
+        "hinge_mm": 12.0,
+        "rectangles": [],
+        "rim_mm": 4.0,
+        "seal_mm": 2.0
+      },
+      "mounting": {
+        "custom_fastener_holes": [],
+        "fastener_edge_offset_mm": 12.0,
+        "fastener_hole_diameter_mm": 3.5,
+        "fastener_holes_enabled": false,
+        "lift_access_diameter_mm": 18.0,
+        "lift_access_enabled": true,
+        "perimeter_enabled": true,
+        "retainer_clearance_mm": 0.35,
+        "retainer_count": 4,
+        "retainer_projection_mm": 3.0,
+        "retainer_width_mm": 10.0,
+        "retainers_enabled": true
+      },
+      "pattern": "solid",
+      "payload_thickness_mm": 0.0,
+      "perforated_grid": {
+        "diameter_mm": 5.0,
+        "margin_x_mm": 10.0,
+        "margin_y_mm": 10.0,
+        "pitch_x_mm": 12.0,
+        "pitch_y_mm": 12.0
+      },
+      "slot_grid": {
+        "margin_x_mm": 10.0,
+        "margin_y_mm": 10.0,
+        "orientation": "horizontal",
+        "pitch_x_mm": 38.0,
+        "pitch_y_mm": 25.0,
+        "slot_length_mm": 25.0,
+        "slot_width_mm": 4.0
+      },
+      "splitting": {
+        "key_clearance_mm": 0.25,
+        "key_size_mm": 8.0,
+        "keyed_alignment": true
+      },
+      "thickness_mm": 3.0
+    },
+    "objects": [
+      {
+        "clearance": 0.6,
+        "height": 34.0,
+        "id": "camera-body",
+        "layer": "lower",
+        "length": 150.0,
+        "locked": true,
+        "name": "Camera body",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "existing_container_bay",
+        "width": 95.0,
+        "x": 35.0,
+        "y": 55.0
+      },
+      {
+        "clearance": 0.5,
+        "diameter": 70.0,
+        "height": 34.0,
+        "id": "lens",
+        "layer": "lower",
+        "length": 70.0,
+        "locked": true,
+        "name": "Lens",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "circular_pocket",
+        "width": 70.0,
+        "x": 205.0,
+        "y": 65.0
+      },
+      {
+        "clearance": 0.5,
+        "height": 20.0,
+        "id": "blower",
+        "layer": "upper",
+        "length": 55.0,
+        "locked": true,
+        "name": "Blower",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "rectangular_pocket",
+        "width": 85.0,
+        "x": 20.0,
+        "y": 20.0
+      },
+      {
+        "clearance": 0.4,
+        "height": 20.0,
+        "id": "film-bin",
+        "layer": "upper",
+        "length": 70.0,
+        "locked": true,
+        "name": "Film bin",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "removable_bin",
+        "wall": 1.8,
+        "width": 55.0,
+        "x": 90.0,
+        "y": 20.0
+      },
+      {
+        "clearance": 0.4,
+        "height": 20.0,
+        "id": "media-bin",
+        "layer": "upper",
+        "length": 70.0,
+        "locked": true,
+        "name": "Media bin",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "removable_bin",
+        "wall": 1.8,
+        "width": 55.0,
+        "x": 175.0,
+        "y": 20.0
+      },
+      {
+        "columns": 3,
+        "height": 18.0,
+        "id": "cleaning-tools",
+        "layer": "upper",
+        "length": 120.0,
+        "locked": true,
+        "name": "Cleaning tools",
+        "rotatable": false,
+        "rotation": 0.0,
+        "rows": 2,
+        "type": "divider_region",
+        "wall": 1.6,
+        "width": 50.0,
+        "x": 20.0,
+        "y": 120.0
+      },
+      {
+        "clearance": 0.5,
+        "height": 20.0,
+        "id": "meter",
+        "layer": "upper",
+        "length": 80.0,
+        "locked": true,
+        "name": "Light meter",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "rectangular_pocket",
+        "width": 45.0,
+        "x": 165.0,
+        "y": 120.0
+      }
+    ],
+    "printer": {
+      "bed_x": 256.0,
+      "bed_y": 256.0,
+      "margin": 5.0,
+      "split": true
+    },
+    "schema_version": 1
+  },
+  "resolved_project": {
+    "case": {
+      "bottom_clearance": 0.8,
+      "case_model": "Custom Case",
+      "compatibility_claim": "none",
+      "corner_radius": 12.0,
+      "geometry_provenance": "synthetic-demonstration",
+      "insert_depth": 70.0,
+      "internal_length": 300.0,
+      "internal_width": 210.0,
+      "layout_inset": 13.97,
+      "side_clearance": 1.0,
+      "taper_allowance": 0.4
+    },
+    "containment": {
+      "clearance_mm": 0.4,
+      "mode": "individual_lids",
+      "panel_thickness_mm": 2.0
+    },
+    "layers": {
+      "enabled": true,
+      "floor_mm": 2.4,
+      "ratio": 0.6
+    },
+    "lid": {
+      "clearance_mm": null,
+      "envelope_source": "unknown",
+      "length_mm": null,
+      "source": "unknown",
+      "width_mm": null
+    },
+    "lid_panel": {
+      "corner_radius_mm": 6.0,
+      "edge_inset_mm": 4.0,
+      "enabled": false,
+      "keepouts": {
+        "clearance_margin_mm": 3.0,
+        "hinge_edge": "top",
+        "hinge_mm": 12.0,
+        "rectangles": [],
+        "rim_mm": 4.0,
+        "seal_mm": 2.0
+      },
+      "mounting": {
+        "custom_fastener_holes": [],
+        "fastener_edge_offset_mm": 12.0,
+        "fastener_hole_diameter_mm": 3.5,
+        "fastener_holes_enabled": false,
+        "lift_access_diameter_mm": 18.0,
+        "lift_access_enabled": true,
+        "perimeter_enabled": true,
+        "retainer_clearance_mm": 0.35,
+        "retainer_count": 4,
+        "retainer_projection_mm": 3.0,
+        "retainer_width_mm": 10.0,
+        "retainers_enabled": true
+      },
+      "pattern": "solid",
+      "payload_thickness_mm": 0.0,
+      "perforated_grid": {
+        "diameter_mm": 5.0,
+        "margin_x_mm": 10.0,
+        "margin_y_mm": 10.0,
+        "pitch_x_mm": 12.0,
+        "pitch_y_mm": 12.0
+      },
+      "slot_grid": {
+        "margin_x_mm": 10.0,
+        "margin_y_mm": 10.0,
+        "orientation": "horizontal",
+        "pitch_x_mm": 38.0,
+        "pitch_y_mm": 25.0,
+        "slot_length_mm": 25.0,
+        "slot_width_mm": 4.0
+      },
+      "splitting": {
+        "key_clearance_mm": 0.25,
+        "key_size_mm": 8.0,
+        "keyed_alignment": true
+      },
+      "thickness_mm": 3.0
+    },
+    "objects": [
+      {
+        "clearance": 0.6,
+        "height": 34.0,
+        "id": "camera-body",
+        "layer": "lower",
+        "length": 150.0,
+        "locked": true,
+        "name": "Camera body",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "existing_container_bay",
+        "width": 95.0,
+        "x": 35.0,
+        "y": 55.0
+      },
+      {
+        "clearance": 0.5,
+        "diameter": 70.0,
+        "height": 34.0,
+        "id": "lens",
+        "layer": "lower",
+        "length": 70.0,
+        "locked": true,
+        "name": "Lens",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "circular_pocket",
+        "width": 70.0,
+        "x": 205.0,
+        "y": 65.0
+      },
+      {
+        "clearance": 0.5,
+        "height": 20.0,
+        "id": "blower",
+        "layer": "upper",
+        "length": 55.0,
+        "locked": true,
+        "name": "Blower",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "rectangular_pocket",
+        "width": 85.0,
+        "x": 20.0,
+        "y": 20.0
+      },
+      {
+        "clearance": 0.4,
+        "height": 20.0,
+        "id": "film-bin",
+        "layer": "upper",
+        "length": 70.0,
+        "locked": true,
+        "name": "Film bin",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "removable_bin",
+        "wall": 1.8,
+        "width": 55.0,
+        "x": 90.0,
+        "y": 20.0
+      },
+      {
+        "clearance": 0.4,
+        "height": 20.0,
+        "id": "media-bin",
+        "layer": "upper",
+        "length": 70.0,
+        "locked": true,
+        "name": "Media bin",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "removable_bin",
+        "wall": 1.8,
+        "width": 55.0,
+        "x": 175.0,
+        "y": 20.0
+      },
+      {
+        "columns": 3,
+        "height": 18.0,
+        "id": "cleaning-tools",
+        "layer": "upper",
+        "length": 120.0,
+        "locked": true,
+        "name": "Cleaning tools",
+        "rotatable": false,
+        "rotation": 0.0,
+        "rows": 2,
+        "type": "divider_region",
+        "wall": 1.6,
+        "width": 50.0,
+        "x": 20.0,
+        "y": 120.0
+      },
+      {
+        "clearance": 0.5,
+        "height": 20.0,
+        "id": "meter",
+        "layer": "upper",
+        "length": 80.0,
+        "locked": true,
+        "name": "Light meter",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "rectangular_pocket",
+        "width": 45.0,
+        "x": 165.0,
+        "y": 120.0
+      }
+    ],
+    "parts": 8,
+    "printer": {
+      "bed_x": 256.0,
+      "bed_y": 256.0,
+      "margin": 5.0,
+      "split": true
+    },
+    "result": "LowerCarrierPart01",
+    "results": [
+      "LowerCarrierPart01",
+      "LowerCarrierPart02",
+      "UpperCarrierPart01",
+      "UpperCarrierPart02",
+      "Bin_film_bin",
+      "Lid_film_bin",
+      "Bin_media_bin",
+      "Lid_media_bin"
+    ],
+    "schema_version": 1,
+    "unplaced": [],
+    "warnings": [
+      "Upper carrier includes keyed alignment, support surfaces, and two side lift-access notches.",
+      "Lower carrier split into 2 bed-sized parts with straight butt seams.",
+      "Upper carrier split into 2 bed-sized parts with straight butt seams."
+    ]
+  },
+  "safety_note": "Optics require measured clearances and soft lining; no impact protection is claimed.",
+  "schema_version": 1,
+  "slug": "analog-camera-care",
+  "title": "Analog Camera Care Pack"
+}

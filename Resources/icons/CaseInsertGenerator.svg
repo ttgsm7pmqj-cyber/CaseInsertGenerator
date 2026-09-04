@@ -1,0 +1,7 @@
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect x="7" y="13" width="50" height="42" rx="8" fill="#f4b942" stroke="#20242a" stroke-width="4"/>
+  <path d="M15 22h34v25H15z" fill="#f7f8fa" stroke="#20242a" stroke-width="3"/>
+  <path d="M32 22v25M15 34.5h34" fill="none" stroke="#e16335" stroke-width="3"/>
+  <path d="M23 13v-3h18v3" fill="none" stroke="#20242a" stroke-width="4" stroke-linecap="round"/>
+</svg>

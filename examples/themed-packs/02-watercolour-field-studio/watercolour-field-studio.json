@@ -1,0 +1,372 @@
+{
+  "compatibility_claim": "none",
+  "description": "Palette, brushes, pigment pans, cups, and accessories.",
+  "geometry_provenance": "synthetic-demonstration",
+  "id": "theme.watercolour-field-studio.v1",
+  "number": 2,
+  "physical_fit_status": "unverified",
+  "project": {
+    "case": {
+      "bottom_clearance": 0.8,
+      "case_model": "Custom Case",
+      "compatibility_claim": "none",
+      "corner_radius": 12.0,
+      "geometry_provenance": "synthetic-demonstration",
+      "insert_depth": 58.0,
+      "internal_length": 300.0,
+      "internal_width": 220.0,
+      "layout_inset": 0.0,
+      "side_clearance": 1.0,
+      "taper_allowance": 0.4
+    },
+    "containment": {
+      "clearance_mm": 0.4,
+      "mode": "shared_panel",
+      "panel_thickness_mm": 2.0
+    },
+    "layers": {
+      "enabled": false,
+      "floor_mm": 2.4,
+      "ratio": 0.5
+    },
+    "lid": {
+      "clearance_mm": null,
+      "envelope_source": "unknown",
+      "length_mm": null,
+      "source": "unknown",
+      "width_mm": null
+    },
+    "lid_panel": {
+      "corner_radius_mm": 6.0,
+      "edge_inset_mm": 4.0,
+      "enabled": false,
+      "keepouts": {
+        "clearance_margin_mm": 3.0,
+        "hinge_edge": "top",
+        "hinge_mm": 12.0,
+        "rectangles": [],
+        "rim_mm": 4.0,
+        "seal_mm": 2.0
+      },
+      "mounting": {
+        "custom_fastener_holes": [],
+        "fastener_edge_offset_mm": 12.0,
+        "fastener_hole_diameter_mm": 3.5,
+        "fastener_holes_enabled": false,
+        "lift_access_diameter_mm": 18.0,
+        "lift_access_enabled": true,
+        "perimeter_enabled": true,
+        "retainer_clearance_mm": 0.35,
+        "retainer_count": 4,
+        "retainer_projection_mm": 3.0,
+        "retainer_width_mm": 10.0,
+        "retainers_enabled": true
+      },
+      "pattern": "solid",
+      "payload_thickness_mm": 0.0,
+      "perforated_grid": {
+        "diameter_mm": 5.0,
+        "margin_x_mm": 10.0,
+        "margin_y_mm": 10.0,
+        "pitch_x_mm": 12.0,
+        "pitch_y_mm": 12.0
+      },
+      "slot_grid": {
+        "margin_x_mm": 10.0,
+        "margin_y_mm": 10.0,
+        "orientation": "horizontal",
+        "pitch_x_mm": 38.0,
+        "pitch_y_mm": 25.0,
+        "slot_length_mm": 25.0,
+        "slot_width_mm": 4.0
+      },
+      "splitting": {
+        "key_clearance_mm": 0.25,
+        "key_size_mm": 8.0,
+        "keyed_alignment": true
+      },
+      "thickness_mm": 3.0
+    },
+    "objects": [
+      {
+        "clearance": 0.6,
+        "height": 18.0,
+        "id": "palette",
+        "layer": "lower",
+        "length": 130.0,
+        "locked": true,
+        "name": "Palette",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "existing_container_bay",
+        "width": 92.0,
+        "x": 20.0,
+        "y": 20.0
+      },
+      {
+        "clearance": 0.5,
+        "height": 24.0,
+        "id": "brush-roll",
+        "layer": "lower",
+        "length": 200.0,
+        "locked": true,
+        "name": "Brush roll",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "rectangular_pocket",
+        "width": 38.0,
+        "x": 20.0,
+        "y": 150.0
+      },
+      {
+        "clearance": 0.5,
+        "diameter": 46.0,
+        "height": 35.0,
+        "id": "cup-a",
+        "layer": "lower",
+        "length": 46.0,
+        "locked": true,
+        "name": "Water cup A",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "circular_pocket",
+        "width": 46.0,
+        "x": 175.0,
+        "y": 20.0
+      },
+      {
+        "clearance": 0.5,
+        "diameter": 46.0,
+        "height": 35.0,
+        "id": "cup-b",
+        "layer": "lower",
+        "length": 46.0,
+        "locked": true,
+        "name": "Water cup B",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "circular_pocket",
+        "width": 46.0,
+        "x": 235.0,
+        "y": 20.0
+      },
+      {
+        "clearance": 0.4,
+        "height": 22.0,
+        "id": "pigment-bin",
+        "layer": "lower",
+        "length": 105.0,
+        "locked": true,
+        "name": "Pigment bin",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "removable_bin",
+        "wall": 1.8,
+        "width": 55.0,
+        "x": 175.0,
+        "y": 90.0
+      }
+    ],
+    "printer": {
+      "bed_x": 256.0,
+      "bed_y": 256.0,
+      "margin": 5.0,
+      "split": true
+    },
+    "schema_version": 1
+  },
+  "resolved_project": {
+    "case": {
+      "bottom_clearance": 0.8,
+      "case_model": "Custom Case",
+      "compatibility_claim": "none",
+      "corner_radius": 12.0,
+      "geometry_provenance": "synthetic-demonstration",
+      "insert_depth": 58.0,
+      "internal_length": 300.0,
+      "internal_width": 220.0,
+      "layout_inset": 3.067,
+      "side_clearance": 1.0,
+      "taper_allowance": 0.4
+    },
+    "containment": {
+      "clearance_mm": 0.4,
+      "mode": "shared_panel",
+      "panel_thickness_mm": 2.0
+    },
+    "layers": {
+      "enabled": false,
+      "floor_mm": 2.4,
+      "ratio": 0.5
+    },
+    "lid": {
+      "clearance_mm": null,
+      "envelope_source": "unknown",
+      "length_mm": null,
+      "source": "unknown",
+      "width_mm": null
+    },
+    "lid_panel": {
+      "corner_radius_mm": 6.0,
+      "edge_inset_mm": 4.0,
+      "enabled": false,
+      "keepouts": {
+        "clearance_margin_mm": 3.0,
+        "hinge_edge": "top",
+        "hinge_mm": 12.0,
+        "rectangles": [],
+        "rim_mm": 4.0,
+        "seal_mm": 2.0
+      },
+      "mounting": {
+        "custom_fastener_holes": [],
+        "fastener_edge_offset_mm": 12.0,
+        "fastener_hole_diameter_mm": 3.5,
+        "fastener_holes_enabled": false,
+        "lift_access_diameter_mm": 18.0,
+        "lift_access_enabled": true,
+        "perimeter_enabled": true,
+        "retainer_clearance_mm": 0.35,
+        "retainer_count": 4,
+        "retainer_projection_mm": 3.0,
+        "retainer_width_mm": 10.0,
+        "retainers_enabled": true
+      },
+      "pattern": "solid",
+      "payload_thickness_mm": 0.0,
+      "perforated_grid": {
+        "diameter_mm": 5.0,
+        "margin_x_mm": 10.0,
+        "margin_y_mm": 10.0,
+        "pitch_x_mm": 12.0,
+        "pitch_y_mm": 12.0
+      },
+      "slot_grid": {
+        "margin_x_mm": 10.0,
+        "margin_y_mm": 10.0,
+        "orientation": "horizontal",
+        "pitch_x_mm": 38.0,
+        "pitch_y_mm": 25.0,
+        "slot_length_mm": 25.0,
+        "slot_width_mm": 4.0
+      },
+      "splitting": {
+        "key_clearance_mm": 0.25,
+        "key_size_mm": 8.0,
+        "keyed_alignment": true
+      },
+      "thickness_mm": 3.0
+    },
+    "objects": [
+      {
+        "clearance": 0.6,
+        "height": 18.0,
+        "id": "palette",
+        "layer": "lower",
+        "length": 130.0,
+        "locked": true,
+        "name": "Palette",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "existing_container_bay",
+        "width": 92.0,
+        "x": 20.0,
+        "y": 20.0
+      },
+      {
+        "clearance": 0.5,
+        "height": 24.0,
+        "id": "brush-roll",
+        "layer": "lower",
+        "length": 200.0,
+        "locked": true,
+        "name": "Brush roll",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "rectangular_pocket",
+        "width": 38.0,
+        "x": 20.0,
+        "y": 150.0
+      },
+      {
+        "clearance": 0.5,
+        "diameter": 46.0,
+        "height": 35.0,
+        "id": "cup-a",
+        "layer": "lower",
+        "length": 46.0,
+        "locked": true,
+        "name": "Water cup A",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "circular_pocket",
+        "width": 46.0,
+        "x": 175.0,
+        "y": 20.0
+      },
+      {
+        "clearance": 0.5,
+        "diameter": 46.0,
+        "height": 35.0,
+        "id": "cup-b",
+        "layer": "lower",
+        "length": 46.0,
+        "locked": true,
+        "name": "Water cup B",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "circular_pocket",
+        "width": 46.0,
+        "x": 235.0,
+        "y": 20.0
+      },
+      {
+        "clearance": 0.4,
+        "height": 22.0,
+        "id": "pigment-bin",
+        "layer": "lower",
+        "length": 105.0,
+        "locked": true,
+        "name": "Pigment bin",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "removable_bin",
+        "wall": 1.8,
+        "width": 55.0,
+        "x": 175.0,
+        "y": 90.0
+      }
+    ],
+    "parts": 9,
+    "printer": {
+      "bed_x": 256.0,
+      "bed_y": 256.0,
+      "margin": 5.0,
+      "split": true
+    },
+    "result": "LowerCarrierPart01",
+    "results": [
+      "LowerCarrierPart01",
+      "LowerCarrierPart02",
+      "Bin_pigment_bin",
+      "SharedRetentionPanelPart01",
+      "SharedRetentionPanelPart02",
+      "SharedPanelClipsPart01",
+      "SharedPanelClipsPart02",
+      "SharedPanelClipsPart03",
+      "SharedPanelClipsPart04"
+    ],
+    "schema_version": 1,
+    "unplaced": [],
+    "warnings": [
+      "Shared panel and quarter-turn clips are a printable prototype; calibrate the retention coupon and loaded carry before release.",
+      "Lower carrier split into 2 bed-sized parts with straight butt seams.",
+      "Shared inner retention panel split into 2 bed-sized parts with straight butt seams.",
+      "Quarter-turn retention clips split into 4 bed-sized parts with straight butt seams."
+    ]
+  },
+  "safety_note": "Wet items must be dried before storage; cup and palette fit are unverified.",
+  "schema_version": 1,
+  "slug": "watercolour-field-studio",
+  "title": "Watercolour Field Studio"
+}

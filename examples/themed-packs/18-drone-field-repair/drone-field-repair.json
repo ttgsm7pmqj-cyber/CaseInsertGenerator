@@ -1,0 +1,454 @@
+{
+  "compatibility_claim": "none",
+  "description": "Propellers, drivers, fasteners, and protected battery containers.",
+  "geometry_provenance": "synthetic-demonstration",
+  "id": "theme.drone-field-repair.v1",
+  "number": 18,
+  "physical_fit_status": "unverified",
+  "project": {
+    "case": {
+      "bottom_clearance": 0.8,
+      "case_model": "Custom Case",
+      "compatibility_claim": "none",
+      "corner_radius": 12.0,
+      "geometry_provenance": "synthetic-demonstration",
+      "insert_depth": 60.0,
+      "internal_length": 320.0,
+      "internal_width": 220.0,
+      "layout_inset": 0.0,
+      "side_clearance": 1.0,
+      "taper_allowance": 0.4
+    },
+    "containment": {
+      "clearance_mm": 0.4,
+      "mode": "individual_lids",
+      "panel_thickness_mm": 2.0
+    },
+    "layers": {
+      "enabled": false,
+      "floor_mm": 2.4,
+      "ratio": 0.5
+    },
+    "lid": {
+      "clearance_mm": null,
+      "envelope_source": "unknown",
+      "length_mm": null,
+      "source": "unknown",
+      "width_mm": null
+    },
+    "lid_panel": {
+      "corner_radius_mm": 6.0,
+      "edge_inset_mm": 4.0,
+      "enabled": false,
+      "keepouts": {
+        "clearance_margin_mm": 3.0,
+        "hinge_edge": "top",
+        "hinge_mm": 12.0,
+        "rectangles": [],
+        "rim_mm": 4.0,
+        "seal_mm": 2.0
+      },
+      "mounting": {
+        "custom_fastener_holes": [],
+        "fastener_edge_offset_mm": 12.0,
+        "fastener_hole_diameter_mm": 3.5,
+        "fastener_holes_enabled": false,
+        "lift_access_diameter_mm": 18.0,
+        "lift_access_enabled": true,
+        "perimeter_enabled": true,
+        "retainer_clearance_mm": 0.35,
+        "retainer_count": 4,
+        "retainer_projection_mm": 3.0,
+        "retainer_width_mm": 10.0,
+        "retainers_enabled": true
+      },
+      "pattern": "solid",
+      "payload_thickness_mm": 0.0,
+      "perforated_grid": {
+        "diameter_mm": 5.0,
+        "margin_x_mm": 10.0,
+        "margin_y_mm": 10.0,
+        "pitch_x_mm": 12.0,
+        "pitch_y_mm": 12.0
+      },
+      "slot_grid": {
+        "margin_x_mm": 10.0,
+        "margin_y_mm": 10.0,
+        "orientation": "horizontal",
+        "pitch_x_mm": 38.0,
+        "pitch_y_mm": 25.0,
+        "slot_length_mm": 25.0,
+        "slot_width_mm": 4.0
+      },
+      "splitting": {
+        "key_clearance_mm": 0.25,
+        "key_size_mm": 8.0,
+        "keyed_alignment": true
+      },
+      "thickness_mm": 3.0
+    },
+    "objects": [
+      {
+        "clearance": 0.5,
+        "height": 14.0,
+        "id": "prop-a",
+        "layer": "lower",
+        "length": 135.0,
+        "locked": true,
+        "name": "Propeller tray A",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "rectangular_pocket",
+        "width": 28.0,
+        "x": 20.0,
+        "y": 20.0
+      },
+      {
+        "clearance": 0.5,
+        "height": 14.0,
+        "id": "prop-b",
+        "layer": "lower",
+        "length": 135.0,
+        "locked": true,
+        "name": "Propeller tray B",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "rectangular_pocket",
+        "width": 28.0,
+        "x": 20.0,
+        "y": 60.0
+      },
+      {
+        "clearance": 0.5,
+        "height": 14.0,
+        "id": "prop-c",
+        "layer": "lower",
+        "length": 135.0,
+        "locked": true,
+        "name": "Propeller tray C",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "rectangular_pocket",
+        "width": 28.0,
+        "x": 20.0,
+        "y": 100.0
+      },
+      {
+        "clearance": 0.5,
+        "height": 14.0,
+        "id": "prop-d",
+        "layer": "lower",
+        "length": 135.0,
+        "locked": true,
+        "name": "Propeller tray D",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "rectangular_pocket",
+        "width": 28.0,
+        "x": 20.0,
+        "y": 140.0
+      },
+      {
+        "columns": 5,
+        "height": 22.0,
+        "id": "drivers",
+        "layer": "lower",
+        "length": 110.0,
+        "locked": true,
+        "name": "Drivers",
+        "rotatable": false,
+        "rotation": 0.0,
+        "rows": 1,
+        "type": "divider_region",
+        "wall": 1.6,
+        "width": 45.0,
+        "x": 180.0,
+        "y": 20.0
+      },
+      {
+        "clearance": 0.4,
+        "height": 18.0,
+        "id": "fasteners",
+        "layer": "lower",
+        "length": 95.0,
+        "locked": true,
+        "name": "Fasteners",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "removable_bin",
+        "wall": 1.8,
+        "width": 50.0,
+        "x": 180.0,
+        "y": 75.0
+      },
+      {
+        "clearance": 0.6,
+        "height": 30.0,
+        "id": "protected-pack-a",
+        "layer": "lower",
+        "length": 55.0,
+        "locked": true,
+        "name": "Protected pack A",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "existing_container_bay",
+        "width": 80.0,
+        "x": 180.0,
+        "y": 128.0
+      },
+      {
+        "clearance": 0.6,
+        "height": 30.0,
+        "id": "protected-pack-b",
+        "layer": "lower",
+        "length": 55.0,
+        "locked": true,
+        "name": "Protected pack B",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "existing_container_bay",
+        "width": 80.0,
+        "x": 250.0,
+        "y": 128.0
+      }
+    ],
+    "printer": {
+      "bed_x": 256.0,
+      "bed_y": 256.0,
+      "margin": 5.0,
+      "split": true
+    },
+    "schema_version": 1
+  },
+  "resolved_project": {
+    "case": {
+      "bottom_clearance": 0.8,
+      "case_model": "Custom Case",
+      "compatibility_claim": "none",
+      "corner_radius": 12.0,
+      "geometry_provenance": "synthetic-demonstration",
+      "insert_depth": 60.0,
+      "internal_length": 320.0,
+      "internal_width": 220.0,
+      "layout_inset": 3.065,
+      "side_clearance": 1.0,
+      "taper_allowance": 0.4
+    },
+    "containment": {
+      "clearance_mm": 0.4,
+      "mode": "individual_lids",
+      "panel_thickness_mm": 2.0
+    },
+    "layers": {
+      "enabled": false,
+      "floor_mm": 2.4,
+      "ratio": 0.5
+    },
+    "lid": {
+      "clearance_mm": null,
+      "envelope_source": "unknown",
+      "length_mm": null,
+      "source": "unknown",
+      "width_mm": null
+    },
+    "lid_panel": {
+      "corner_radius_mm": 6.0,
+      "edge_inset_mm": 4.0,
+      "enabled": false,
+      "keepouts": {
+        "clearance_margin_mm": 3.0,
+        "hinge_edge": "top",
+        "hinge_mm": 12.0,
+        "rectangles": [],
+        "rim_mm": 4.0,
+        "seal_mm": 2.0
+      },
+      "mounting": {
+        "custom_fastener_holes": [],
+        "fastener_edge_offset_mm": 12.0,
+        "fastener_hole_diameter_mm": 3.5,
+        "fastener_holes_enabled": false,
+        "lift_access_diameter_mm": 18.0,
+        "lift_access_enabled": true,
+        "perimeter_enabled": true,
+        "retainer_clearance_mm": 0.35,
+        "retainer_count": 4,
+        "retainer_projection_mm": 3.0,
+        "retainer_width_mm": 10.0,
+        "retainers_enabled": true
+      },
+      "pattern": "solid",
+      "payload_thickness_mm": 0.0,
+      "perforated_grid": {
+        "diameter_mm": 5.0,
+        "margin_x_mm": 10.0,
+        "margin_y_mm": 10.0,
+        "pitch_x_mm": 12.0,
+        "pitch_y_mm": 12.0
+      },
+      "slot_grid": {
+        "margin_x_mm": 10.0,
+        "margin_y_mm": 10.0,
+        "orientation": "horizontal",
+        "pitch_x_mm": 38.0,
+        "pitch_y_mm": 25.0,
+        "slot_length_mm": 25.0,
+        "slot_width_mm": 4.0
+      },
+      "splitting": {
+        "key_clearance_mm": 0.25,
+        "key_size_mm": 8.0,
+        "keyed_alignment": true
+      },
+      "thickness_mm": 3.0
+    },
+    "objects": [
+      {
+        "clearance": 0.5,
+        "height": 14.0,
+        "id": "prop-a",
+        "layer": "lower",
+        "length": 135.0,
+        "locked": true,
+        "name": "Propeller tray A",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "rectangular_pocket",
+        "width": 28.0,
+        "x": 20.0,
+        "y": 20.0
+      },
+      {
+        "clearance": 0.5,
+        "height": 14.0,
+        "id": "prop-b",
+        "layer": "lower",
+        "length": 135.0,
+        "locked": true,
+        "name": "Propeller tray B",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "rectangular_pocket",
+        "width": 28.0,
+        "x": 20.0,
+        "y": 60.0
+      },
+      {
+        "clearance": 0.5,
+        "height": 14.0,
+        "id": "prop-c",
+        "layer": "lower",
+        "length": 135.0,
+        "locked": true,
+        "name": "Propeller tray C",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "rectangular_pocket",
+        "width": 28.0,
+        "x": 20.0,
+        "y": 100.0
+      },
+      {
+        "clearance": 0.5,
+        "height": 14.0,
+        "id": "prop-d",
+        "layer": "lower",
+        "length": 135.0,
+        "locked": true,
+        "name": "Propeller tray D",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "rectangular_pocket",
+        "width": 28.0,
+        "x": 20.0,
+        "y": 140.0
+      },
+      {
+        "columns": 5,
+        "height": 22.0,
+        "id": "drivers",
+        "layer": "lower",
+        "length": 110.0,
+        "locked": true,
+        "name": "Drivers",
+        "rotatable": false,
+        "rotation": 0.0,
+        "rows": 1,
+        "type": "divider_region",
+        "wall": 1.6,
+        "width": 45.0,
+        "x": 180.0,
+        "y": 20.0
+      },
+      {
+        "clearance": 0.4,
+        "height": 18.0,
+        "id": "fasteners",
+        "layer": "lower",
+        "length": 95.0,
+        "locked": true,
+        "name": "Fasteners",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "removable_bin",
+        "wall": 1.8,
+        "width": 50.0,
+        "x": 180.0,
+        "y": 75.0
+      },
+      {
+        "clearance": 0.6,
+        "height": 30.0,
+        "id": "protected-pack-a",
+        "layer": "lower",
+        "length": 55.0,
+        "locked": true,
+        "name": "Protected pack A",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "existing_container_bay",
+        "width": 80.0,
+        "x": 180.0,
+        "y": 128.0
+      },
+      {
+        "clearance": 0.6,
+        "height": 30.0,
+        "id": "protected-pack-b",
+        "layer": "lower",
+        "length": 55.0,
+        "locked": true,
+        "name": "Protected pack B",
+        "rotatable": false,
+        "rotation": 0.0,
+        "type": "existing_container_bay",
+        "width": 80.0,
+        "x": 250.0,
+        "y": 128.0
+      }
+    ],
+    "parts": 4,
+    "printer": {
+      "bed_x": 256.0,
+      "bed_y": 256.0,
+      "margin": 5.0,
+      "split": true
+    },
+    "result": "LowerCarrierPart01",
+    "results": [
+      "LowerCarrierPart01",
+      "LowerCarrierPart02",
+      "Bin_fasteners",
+      "Lid_fasteners"
+    ],
+    "schema_version": 1,
+    "unplaced": [],
+    "warnings": [
+      "Lower carrier split into 2 bed-sized parts with straight butt seams."
+    ]
+  },
+  "safety_note": "No loose lithium-battery cavity is proposed; use approved protective containers.",
+  "schema_version": 1,
+  "slug": "drone-field-repair",
+  "title": "Drone Field Repair Pack"
+}

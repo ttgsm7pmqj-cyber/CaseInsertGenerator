@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "catalog_name": "Synthetic demonstration envelopes",
+  "presets": [
+    {
+      "preset_id": "synthetic-small-rounded",
+      "brand": "Synthetic examples",
+      "series": "Rounded envelopes",
+      "model": "Small — synthetic",
+      "display_name": "Small rounded envelope (synthetic)",
+      "verification": {
+        "level": "synthetic",
+        "label": "Synthetic example",
+        "geometry_basis": "Original demonstration dimensions; replace with physical measurements",
+        "physical_fit": false
+      },
+      "lid": {"available": false},
+      "geometry": {
+        "internal_length": 180.0,
+        "internal_width": 120.0,
+        "internal_depth": 45.0,
+        "bottom_depth": 40.0,
+        "bottom_corner_radius": 12.0,
+        "floor_fillet_radius": 0.0,
+        "draft_angle_degrees": 0.0,
+        "profile_reference_height": 0.0
+      }
+    },
+    {
+      "preset_id": "synthetic-medium-rounded",
+      "brand": "Synthetic examples",
+      "series": "Rounded envelopes",
+      "model": "Medium — synthetic",
+      "display_name": "Medium rounded envelope (synthetic)",
+      "verification": {
+        "level": "synthetic",
+        "label": "Synthetic example",
+        "geometry_basis": "Original demonstration dimensions; replace with physical measurements",
+        "physical_fit": false
+      },
+      "lid": {"available": false},
+      "geometry": {
+        "internal_length": 280.0,
+        "internal_width": 190.0,
+        "internal_depth": 62.0,
+        "bottom_depth": 55.0,
+        "bottom_corner_radius": 15.0,
+        "floor_fillet_radius": 0.0,
+        "draft_angle_degrees": 0.0,
+        "profile_reference_height": 0.0
+      }
+    },
+    {
+      "preset_id": "synthetic-deep-rounded",
+      "brand": "Synthetic examples",
+      "series": "Rounded envelopes",
+      "model": "Deep — synthetic",
+      "display_name": "Deep rounded envelope (synthetic)",
+      "verification": {
+        "level": "synthetic",
+        "label": "Synthetic example",
+        "geometry_basis": "Original demonstration dimensions; replace with physical measurements",
+        "physical_fit": false
+      },
+      "lid": {"available": false},
+      "geometry": {
+        "internal_length": 360.0,
+        "internal_width": 250.0,
+        "internal_depth": 92.0,
+        "bottom_depth": 80.0,
+        "bottom_corner_radius": 18.0,
+        "floor_fillet_radius": 0.0,
+        "draft_angle_degrees": 0.0,
+        "profile_reference_height": 0.0
+      }
+    }
+  ]
+}

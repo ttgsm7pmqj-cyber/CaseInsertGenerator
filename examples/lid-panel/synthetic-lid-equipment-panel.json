@@ -1,0 +1,105 @@
+{
+  "case": {
+    "bottom_clearance": 0.5,
+    "case_model": "Custom Case",
+    "compatibility_claim": "none",
+    "corner_radius": 10.0,
+    "geometry_provenance": "synthetic-demonstration",
+    "insert_depth": 34.0,
+    "internal_length": 250.0,
+    "internal_width": 170.0,
+    "side_clearance": 1.0,
+    "taper_allowance": 0.5
+  },
+  "containment": {
+    "clearance_mm": 0.4,
+    "mode": "none",
+    "panel_thickness_mm": 2.0
+  },
+  "layers": {
+    "enabled": false,
+    "floor_mm": 2.4,
+    "ratio": 0.5
+  },
+  "lid": {
+    "clearance_mm": 22.0,
+    "envelope_source": "cad-derived",
+    "length_mm": 250.0,
+    "source": "cad-derived",
+    "width_mm": 170.0
+  },
+  "lid_panel": {
+    "corner_radius_mm": 8.0,
+    "edge_inset_mm": 4.0,
+    "enabled": true,
+    "keepouts": {
+      "clearance_margin_mm": 3.0,
+      "hinge_edge": "top",
+      "hinge_mm": 16.0,
+      "rectangles": [
+        {
+          "label": "Synthetic lid rib keep-out",
+          "length_mm": 34.0,
+          "width_mm": 18.0,
+          "x_mm": 91.0,
+          "y_mm": 41.0
+        }
+      ],
+      "rim_mm": 4.0,
+      "seal_mm": 3.0
+    },
+    "mounting": {
+      "custom_fastener_holes": [],
+      "fastener_edge_offset_mm": 16.0,
+      "fastener_hole_diameter_mm": 3.5,
+      "fastener_holes_enabled": true,
+      "lift_access_diameter_mm": 20.0,
+      "lift_access_enabled": true,
+      "perimeter_enabled": true,
+      "retainer_clearance_mm": 0.35,
+      "retainer_count": 4,
+      "retainer_projection_mm": 3.2,
+      "retainer_width_mm": 11.0,
+      "retainers_enabled": true
+    },
+    "pattern": "slot_grid",
+    "payload_thickness_mm": 8.0,
+    "perforated_grid": {
+      "diameter_mm": 5.0,
+      "margin_x_mm": 10.0,
+      "margin_y_mm": 10.0,
+      "pitch_x_mm": 12.0,
+      "pitch_y_mm": 12.0
+    },
+    "slot_grid": {
+      "margin_x_mm": 11.0,
+      "margin_y_mm": 10.0,
+      "orientation": "horizontal",
+      "pitch_x_mm": 36.0,
+      "pitch_y_mm": 24.0,
+      "slot_length_mm": 26.0,
+      "slot_width_mm": 4.5
+    },
+    "splitting": {
+      "key_clearance_mm": 0.25,
+      "key_size_mm": 8.0,
+      "keyed_alignment": true
+    },
+    "thickness_mm": 3.0
+  },
+  "objects": [],
+  "printer": {
+    "bed_x": 256.0,
+    "bed_y": 256.0,
+    "margin": 5.0,
+    "split": true
+  },
+  "schema_version": 1,
+  "verification": {
+    "compatibility_claim": "none",
+    "evidence_scope": "synthetic CAD envelope and clearance only",
+    "geometry_provenance": "synthetic-demonstration",
+    "physical_fit": false,
+    "status": "physical-fit unverified"
+  }
+}

@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.FCBak
+*.bak
+.DS_Store
+
+# Locally generated models and exports are reproducible and are not source.
+artifacts/
+dist/
+vendor-cad/

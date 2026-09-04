@@ -1,0 +1,36 @@
+<!-- SPDX-License-Identifier: CC-BY-SA-4.0 -->
+
+Case Insert Generator notices
+=============================
+
+Project licensing
+-----------------
+
+Case Insert Generator source code is offered under LGPL-2.1-or-later.
+Original documentation and visual assets are offered under CC-BY-SA-4.0.
+The corresponding complete license texts are in `LICENSES/`.
+
+The bundled case presets are original synthetic examples. They are not copied
+from, derived from, or asserted compatible with any commercial case. Users must
+measure their own case and verify a printed fit before relying on an insert.
+
+FreeCAD SVG importer boundary
+----------------------------
+
+The SVG feature calls the `importSVG` module supplied by the user's FreeCAD
+installation at runtime. No FreeCAD `importSVG.py` source is copied, modified,
+or vendored in this repository as of version 0.1.0.
+
+Authoritative upstream reference used for compatibility work:
+
+- Project: FreeCAD
+- Component: `src/Mod/Draft/importSVG.py`
+- Upstream revision: `145529fe741292ff0b3977a01195bf0247425794`
+- Source: https://github.com/FreeCAD/FreeCAD/blob/145529fe741292ff0b3977a01195bf0247425794/src/Mod/Draft/importSVG.py
+- SPDX license: LGPL-2.1-or-later
+- Upstream copyright notice: Copyright (c) 2009 Yorik van Havre
+- Verified FreeCAD 1.1.3 installed-file SHA-256: `01c1f9abee7e189b127a345c40af830f8ded909add0560bef141fef571107215`
+
+If upstream implementation code is later adapted or vendored, that source file
+must retain its upstream SPDX identifier and copyright notice, identify the
+exact changes, and update this notice before release.

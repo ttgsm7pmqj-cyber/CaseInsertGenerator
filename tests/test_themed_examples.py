@@ -178,7 +178,8 @@ class ThemedExampleCatalogTests(unittest.TestCase):
                     audit = entry[key]["portable_source_scan"]
                     self.assertEqual(audit, {"findings": [], "ok": True})
                     self.assertEqual(
-                        scan_fcstd(EXAMPLE_ROOT / entry[key]["path"]), audit
+                        scan_fcstd(EXAMPLE_ROOT / entry[key]["path"],
+                                   require_example_license=True), audit
                     )
                 layout = entry["exploded_fcstd"]["layout"]
                 reopen = entry["exploded_fcstd"]["reopen_audit"]

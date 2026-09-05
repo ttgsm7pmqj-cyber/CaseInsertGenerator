@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: LGPL-2.1-or-later
+"""Run local CAD/GUI checks for the installed checkout; results go to artifacts."""
+
+from pathlib import Path
+import runpy
+
+from freecad.CaseInsertGenerator.bridge import addon_directory
+
+
+if __name__ == "__main__":
+    _root = Path(addon_directory())
+    _runner = runpy.run_path(str(_root / "tests/run_regressions.py"),
+                            run_name="cig_regression_runner")
+    _runner["run"]()

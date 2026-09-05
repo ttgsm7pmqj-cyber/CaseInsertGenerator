@@ -108,6 +108,19 @@ def _scan_fcstd(path: Path, relative: str, findings: list[dict[str, str]]) -> No
             names = archive.namelist()
             if "Document.xml" not in names:
                 _finding(findings, relative, "FCStd missing Document.xml")
+            else:
+                try:
+                    document = ET.fromstring(archive.read("Document.xml"))
+                    for name, expected in (
+                            ("License", "CC-BY-SA-4.0"),
+                            ("LicenseURL", "https://creativecommons.org/licenses/by-sa/4.0/")):
+                        value = document.find(
+                            "./Properties/Property[@name='%s']/String" % name)
+                        if value is None or value.get("value") != expected:
+                            _finding(findings, relative + "::Document.xml",
+                                     "example " + name + " mismatch")
+                except ET.ParseError:
+                    _finding(findings, relative, "FCStd invalid Document.xml")
             _scan_bytes(archive.comment, relative + "::<archive-comment>", findings)
             for member in names:
                 member_path = PurePosixPath(member)

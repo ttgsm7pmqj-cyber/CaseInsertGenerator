@@ -2,8 +2,9 @@
 
 # FreeCAD Addon addition issue draft
 
-This is a local draft only. Do not submit it without separate user approval
-after the repository is public.
+This is a local draft only. Submission requires separate user approval.
+The version and evidence below describe the published v0.1.0 baseline; refresh
+them after publishing subsequent changes and before submitting this draft.
 
 ## Repository URL
 

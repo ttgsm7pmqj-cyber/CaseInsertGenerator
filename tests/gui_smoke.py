@@ -97,11 +97,14 @@ def _inspect(controller, startup_was_lazy):
         QtWidgets.QApplication.processEvents()
         if "Ready for printable generation" not in controller.lid_generation_gate.text():
             raise RuntimeError("Measured clearance did not unlock printable generation")
-        if (not controller.export_stl_button.isEnabled() or
-                not controller.export_step_button.isEnabled()):
-            raise RuntimeError("Measured clearance did not enable printable exports")
+        if (controller.export_stl_button.isEnabled() or
+                controller.export_step_button.isEnabled()):
+            raise RuntimeError("Printable exports were enabled before a model was generated")
         controller._generate()
         QtWidgets.QApplication.processEvents()
+        if (not controller.export_stl_button.isEnabled() or
+                not controller.export_step_button.isEnabled()):
+            raise RuntimeError("Current printable geometry did not enable exports")
         document = App.ActiveDocument
         results = [] if document is None else [
             obj for obj in document.Objects

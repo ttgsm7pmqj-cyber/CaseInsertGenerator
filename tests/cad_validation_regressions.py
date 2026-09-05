@@ -9,6 +9,7 @@ contract results from the number of cases exercised within each contract.
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib
 from pathlib import Path
 import runpy
@@ -41,7 +42,11 @@ def run():
         return [
             (
                 item.Name, item.TypeId,
-                item.Shape.hashCode() if hasattr(item, "Shape") else None,
+                # OpenCascade hashCode includes topology identity, which can
+                # change when FreeCAD refreshes a shape wrapper. Compare the
+                # saved geometry content for this preservation contract.
+                hashlib.sha256(item.Shape.exportBrepToString().encode("utf-8")).hexdigest()
+                if hasattr(item, "Shape") else None,
                 getattr(item, "ProjectJSON", None),
                 getattr(item, "ParameterJSON", None),
             )
@@ -107,6 +112,13 @@ def run():
             engine.generate_project(base_spec(), document=doc)
             spec = svg_project('<path d="M0 0 L1e309 0 L10 10 Z"/>', "nonfinite")
             expect_unchanged_failure(doc, spec, "finite")
+            for name, body in (
+                ("transformed-overflow",
+                 '<rect x="1e308" width="10" height="5" transform="scale(10)"/>'),
+                ("control-overflow",
+                 '<path d="M1e308 0 c1e308 0 1e308 10 0 10 L0 10 L0 0 Z"/>'),
+            ):
+                expect_unchanged_failure(doc, svg_project(body, name), "finite")
             spec = base_spec([object_spec(
                 "circle", "circular_pocket", 20, 20, 20, 20,
                 extra={"diameter": float("nan")},
@@ -124,7 +136,7 @@ def run():
                 doc, invalid_lid, "verification must be a mapping",
                 engine.generate_lid_panel_project,
             )
-            return {"cases": 4, "prior_model_preserved": True}
+            return {"cases": 6, "prior_model_preserved": True}
 
         def containment_covers_only_supported_storage():
             doc = new_document()

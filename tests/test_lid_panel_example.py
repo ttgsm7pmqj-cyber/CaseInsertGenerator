@@ -50,7 +50,8 @@ class LidPanelExampleTests(unittest.TestCase):
             fcstd = EXAMPLE / fcstd_record["path"]
             self.assertTrue(fcstd.is_file())
             self.assertEqual(_sha256(fcstd), fcstd_record["sha256"])
-            self.assertEqual(scan_fcstd(fcstd), {"ok": True, "findings": []})
+            self.assertEqual(scan_fcstd(fcstd, require_example_license=True),
+                             {"ok": True, "findings": []})
             png_record = manifest[presentation]["png"]
             png = EXAMPLE / png_record["path"]
             self.assertTrue(png.is_file())

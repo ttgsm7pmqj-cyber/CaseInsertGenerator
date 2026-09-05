@@ -1567,9 +1567,7 @@ def layout_project(spec: Mapping[str, Any], strategy: str) -> LayoutResult:
         )
     project = validate_project(spec)
     layer_heights = _layer_heights(project)
-    return _generate_strategy(
-        project, strategy, layer_heights, _project_warnings(project)
-    )
+    return _generate_strategy(project, strategy, layer_heights)
 
 
 def generate_layouts(spec: Mapping[str, Any]) -> tuple[LayoutResult, ...]:
@@ -1577,9 +1575,8 @@ def generate_layouts(spec: Mapping[str, Any]) -> tuple[LayoutResult, ...]:
 
     project = validate_project(spec)
     layer_heights = _layer_heights(project)
-    warnings = _project_warnings(project)
     return tuple(
-        _generate_strategy(project, strategy, layer_heights, warnings)
+        _generate_strategy(project, strategy, layer_heights)
         for strategy in LAYOUT_STRATEGIES
     )
 
@@ -1588,7 +1585,6 @@ def _generate_strategy(
     project: Mapping[str, Any],
     strategy: str,
     layer_heights: tuple[tuple[str, float], ...],
-    warnings: tuple[str, ...],
 ) -> LayoutResult:
     case_length, case_width = _usable_plan(project)
     layout_inset = project["case"].get("layout_inset", 0.0)
@@ -1735,7 +1731,10 @@ def _generate_strategy(
         strategy=strategy,
         placements=tuple(sorted(placements, key=lambda item: item.object_id)),
         unplaced=tuple(sorted(unplaced, key=lambda item: item.object_id)),
-        warnings=warnings,
+        warnings=_project_warnings({
+            **project,
+            "unplaced": [item.to_dict() for item in unplaced],
+        }),
         layer_heights=layer_heights,
     )
 

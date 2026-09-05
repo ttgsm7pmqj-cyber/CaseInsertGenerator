@@ -518,6 +518,36 @@ class GeometryGenerationResultTests(unittest.TestCase):
 
 
 class DeterministicLayoutTests(unittest.TestCase):
+    def test_stale_unplaced_metadata_cannot_hide_a_newly_placed_storage_warning(self):
+        source = project_spec(
+            objects=[project_object("loose", "divider_region")],
+            containment={"mode": "individual_lids"},
+        )
+        source["unplaced"] = [{"object_id": "loose"}]
+        original = copy.deepcopy(source)
+        for result in generate_layouts(source):
+            with self.subTest(strategy=result.strategy):
+                self.assertEqual([item.object_id for item in result.placements], ["loose"])
+                self.assertEqual(result.unplaced_count, 0)
+                warnings = [item for item in result.warnings if "no containment" in item]
+                self.assertEqual(len(warnings), 1)
+                self.assertIn("'loose'", warnings[0])
+                self.assertEqual(layout_project(source, result.strategy), result)
+        self.assertEqual(source, original)
+
+    def test_newly_unplaced_storage_does_not_receive_a_containment_warning(self):
+        source = project_spec(
+            objects=[project_object("oversized", "divider_region", width=1000)],
+            containment={"mode": "individual_lids"},
+        )
+        source["unplaced"] = []
+        for result in generate_layouts(source):
+            with self.subTest(strategy=result.strategy):
+                self.assertEqual(result.placed_count, 0)
+                self.assertEqual([item.object_id for item in result.unplaced], ["oversized"])
+                self.assertFalse(any("no containment" in item for item in result.warnings))
+                self.assertEqual(layout_project(source, result.strategy), result)
+
     def test_containment_warnings_cover_each_loose_storage_type_and_mode(self):
         kinds = ("removable_bin", "existing_container_bay", "divider_region")
         for kind in kinds:

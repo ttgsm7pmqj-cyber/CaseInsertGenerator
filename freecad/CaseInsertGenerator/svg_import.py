@@ -1318,6 +1318,7 @@ def _parse_inline_style(raw: str) -> dict[str, str]:
     if not raw.strip():
         return {}
     result: dict[str, str] = {}
+    important_properties: set[str] = set()
     for declaration in raw.split(";"):
         if not declaration.strip():
             continue
@@ -1326,9 +1327,15 @@ def _parse_inline_style(raw: str) -> dict[str, str]:
         name, value = declaration.split(":", 1)
         name = name.strip().lower()
         value = value.strip()
+        priority = re.search(r"!\s*important\s*$", value, re.IGNORECASE)
+        if priority:
+            value = value[:priority.start()].rstrip()
         if not name or not value:
             raise ValueError(f"Malformed inline style declaration {declaration!r}.")
-        result[name] = value
+        if priority or name not in important_properties:
+            result[name] = value
+        if priority:
+            important_properties.add(name)
     return result
 
 

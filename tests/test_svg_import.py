@@ -144,6 +144,35 @@ class TransformTests(unittest.TestCase):
 
 
 class GeometryTests(unittest.TestCase):
+    def test_important_effect_wins_over_a_later_normal_declaration(self) -> None:
+        for effect in ("clip-path", "mask", "filter"):
+            for marker in ("!important", "! IMPORTANT"):
+                source = svg(
+                    f'<rect width="20" height="10" '
+                    f'style="{effect}:url(#half) {marker}; {effect}:none"/>'
+                )
+                with self.subTest(effect=effect, marker=marker):
+                    result = preflight_svg(source)
+                    self.assertFalse(result.is_importable)
+                    self.assertIn("UNSUPPORTED_GEOMETRY_EFFECT", diagnostic_codes(result))
+
+    def test_important_none_is_valid_and_obeys_same_priority_source_order(self) -> None:
+        for effect in ("clip-path", "mask", "filter"):
+            for declarations, importable in (
+                (f"{effect}:none !important", True),
+                (f"{effect}:none !important; {effect}:url(#half)", True),
+                (f"{effect}:url(#half) !important; {effect}:none !important", True),
+                (f"{effect}:none !important; {effect}:url(#half) !important", False),
+            ):
+                source = svg(f'<rect width="20" height="10" style="{declarations}"/>')
+                with self.subTest(declarations=declarations):
+                    result = preflight_svg(source)
+                    self.assertEqual(result.is_importable, importable, result.to_dict())
+                    self.assertEqual(
+                        "UNSUPPORTED_GEOMETRY_EFFECT" in diagnostic_codes(result),
+                        not importable,
+                    )
+
     def test_effects_on_visible_geometry_and_ancestors_are_rejected(self) -> None:
         for effect in ("clip-path", "mask", "filter"):
             for body in (

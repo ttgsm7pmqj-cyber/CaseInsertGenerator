@@ -17,8 +17,8 @@ import zlib
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.1.0"
-RELEASE_DATE = "2026-09-04"
+VERSION = "0.1.1"
+RELEASE_DATE = "2026-09-05"
 REPOSITORY_URL = "https://github.com/ttgsm7pmqj-cyber/CaseInsertGenerator"
 
 FORBIDDEN_MARKERS = {
@@ -256,7 +256,7 @@ def _metadata_checks(root: Path, findings: list[dict[str, str]]) -> None:
         _finding(findings, "package.xml", "workbench classname mismatch")
     init_text = (root / "freecad" / "CaseInsertGenerator" / "__init__.py").read_text(
         encoding="utf-8")
-    if not re.search(r'^__version__\s*=\s*["\']0\.1\.0["\']\s*$', init_text, re.M):
+    if not re.search(rf'^__version__\s*=\s*["\']{re.escape(VERSION)}["\']\s*$', init_text, re.M):
         _finding(findings, "freecad/CaseInsertGenerator/__init__.py", "version mismatch")
     model_text = (root / "freecad" / "CaseInsertGenerator" / "project_model.py").read_text(
         encoding="utf-8")

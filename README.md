@@ -19,7 +19,7 @@ synthetic examples. The bundled presets are convenient demonstration envelopes,
 not commercial case dimensions and not physical-fit claims. Measure the inside
 of a real case and print a tolerance coupon before printing a full insert.
 
-Version 0.1.0 supports FreeCAD 1.1.3 through the 1.1.x series. Release
+Version 0.1.1 supports FreeCAD 1.1.3 through the 1.1.x series. Release
 validation targets FreeCAD 1.1.3.
 
 ## Install locally

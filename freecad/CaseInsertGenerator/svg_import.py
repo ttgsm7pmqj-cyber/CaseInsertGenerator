@@ -875,10 +875,17 @@ def _inspect_geometry(
             )
         return
 
+    local_to_mm = _matrix_multiply(viewport.user_to_mm, transform)
+    if not all(math.isfinite(value) for value in local_to_mm):
+        diagnostics.append(SvgDiagnostic(
+            FATAL, "INVALID_TRANSFORM", "Normalized transforms must be finite.", path, element_id))
+        return
+
     errors: list[tuple[str, str]] = []
+    points_to_check: list[tuple[float, float]] = []
     subpath_count = 1
     if tag == "path":
-        validation = _validate_path_data(element.get("d", ""))
+        validation = _validate_path_data(element.get("d", ""), local_to_mm)
         errors.extend(validation.errors)
         subpath_count = validation.subpath_count
         if validation.open_subpaths:
@@ -900,6 +907,7 @@ def _inspect_geometry(
             _validate_points_attribute(element.get("points", ""), closed=False, errors=errors)
     elif tag == "polygon":
         points = _validate_points_attribute(element.get("points", ""), closed=True, errors=errors)
+        points_to_check = points
         if points and _polygon_has_self_intersection(points):
             errors.append(
                 (
@@ -924,6 +932,14 @@ def _inspect_geometry(
         for name in ("cx", "cy"):
             _validate_optional_geometry_length(element, name, errors)
 
+    if not errors:
+        try:
+            if tag in {"rect", "circle", "ellipse"}:
+                points_to_check = _primitive_bound_points(element, tag)
+            _require_finite_geometry_points(points_to_check, local_to_mm)
+        except ValueError as exc:
+            errors.append(("INVALID_GEOMETRY_VALUE", str(exc)))
+
     fill_rule = paint.fill_rule
     if fill_rule not in {"nonzero", "evenodd"}:
         errors.append(
@@ -938,11 +954,6 @@ def _inspect_geometry(
     if errors:
         return
 
-    local_to_mm = _matrix_multiply(viewport.user_to_mm, transform)
-    if not all(math.isfinite(value) for value in local_to_mm):
-        diagnostics.append(SvgDiagnostic(
-            FATAL, "INVALID_TRANSFORM", "Normalized transforms must be finite.", path, element_id))
-        return
     raw_attributes = {
         _split_tag(key)[1]: value
         for key, value in sorted(element.attrib.items())
@@ -961,6 +972,33 @@ def _inspect_geometry(
             attributes=MappingProxyType(raw_attributes),
         )
     )
+
+
+def _primitive_bound_points(element: ET.Element, tag: str) -> list[tuple[float, float]]:
+    def value(name: str) -> float:
+        # Absolute element lengths resolve to CSS user units before the
+        # viewport and element transforms are applied.
+        return parse_length_mm(element.get(name, "0")) / PX_TO_MM
+
+    if tag == "rect":
+        left, bottom = value("x"), value("y")
+        right, top = left + value("width"), bottom + value("height")
+    else:
+        cx, cy = value("cx"), value("cy")
+        rx = value("r" if tag == "circle" else "rx")
+        ry = value("r" if tag == "circle" else "ry")
+        left, right, bottom, top = cx - rx, cx + rx, cy - ry, cy + ry
+    return [(left, bottom), (right, bottom), (right, top), (left, top)]
+
+
+def _require_finite_geometry_points(
+    points: Iterable[tuple[float, float]], transform: Matrix,
+) -> None:
+    for point in points:
+        if not all(math.isfinite(value) for value in point):
+            raise ValueError("Resolved geometry coordinates must be finite.")
+        if not all(math.isfinite(value) for value in apply_matrix(transform, *point)):
+            raise ValueError("Transformed geometry coordinates must be finite.")
 
 
 def _validate_optional_geometry_length(
@@ -1028,7 +1066,7 @@ def _validate_points_attribute(
     return points
 
 
-def _validate_path_data(raw: str) -> _PathValidation:
+def _validate_path_data(raw: str, transform: Matrix = IDENTITY_MATRIX) -> _PathValidation:
     if not raw.strip():
         return _PathValidation(0, 0, (("MALFORMED_PATH_DATA", "Path data is empty."),))
     try:
@@ -1042,6 +1080,8 @@ def _validate_path_data(raw: str) -> _PathValidation:
     current = (0.0, 0.0)
     start = (0.0, 0.0)
     command: Optional[str] = None
+    previous_curve: Optional[str] = None
+    previous_control: Optional[tuple[float, float]] = None
     index = 0
 
     while index < len(tokens):
@@ -1061,6 +1101,8 @@ def _validate_path_data(raw: str) -> _PathValidation:
                 subpaths.append(active)
                 active = None
                 command = None
+                previous_curve = None
+                previous_control = None
                 continue
             if index >= len(tokens) or _COMMAND_RE.match(tokens[index]):
                 errors.append(("MALFORMED_PATH_DATA", f"Command {command} has no coordinates."))
@@ -1103,12 +1145,15 @@ def _validate_path_data(raw: str) -> _PathValidation:
                 subpaths.append(active)
             try:
                 point = _endpoint_for_command(upper, values, current, relative)
+                _require_finite_geometry_points([point], transform)
             except ValueError as exc:
                 return _PathValidation(0, 0, (("MALFORMED_PATH_DATA", str(exc)),))
             current = point
             start = point
             active = _PathSubpath(points=[point])
             command = "l" if relative else "L"
+            previous_curve = None
+            previous_control = None
             continue
 
         if active is None:
@@ -1122,6 +1167,25 @@ def _validate_path_data(raw: str) -> _PathValidation:
 
         try:
             endpoint = _endpoint_for_command(upper, values, current, relative)
+            controls = []
+            if upper in {"C", "S", "Q"}:
+                controls = [
+                    (values[i] + (current[0] if relative else 0.0),
+                     values[i + 1] + (current[1] if relative else 0.0))
+                    for i in range(0, len(values) - 2, 2)
+                ]
+            curve = "cubic" if upper in {"C", "S"} else "quadratic" if upper in {"Q", "T"} else None
+            if upper in {"S", "T"}:
+                reflected = current
+                if previous_curve == curve and previous_control is not None:
+                    reflected = (
+                        current[0] + (current[0] - previous_control[0]),
+                        current[1] + (current[1] - previous_control[1]),
+                    )
+                controls.insert(0, reflected)
+            _require_finite_geometry_points([endpoint, *controls], transform)
+            previous_curve = curve
+            previous_control = controls[-1] if controls else None
         except ValueError as exc:
             return _PathValidation(0, 0, (("MALFORMED_PATH_DATA", str(exc)),))
         active.drawable_segments += 1

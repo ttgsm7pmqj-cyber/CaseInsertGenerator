@@ -144,6 +144,67 @@ class TransformTests(unittest.TestCase):
 
 
 class GeometryTests(unittest.TestCase):
+    def test_finite_matrices_cannot_overflow_primitive_or_polygon_coordinates(self) -> None:
+        for body in (
+            '<rect x="1e308" y="0" width="10" height="5" transform="scale(10)"/>',
+            '<circle cx="1e308" cy="0" r="5" transform="scale(10)"/>',
+            '<ellipse cx="0" cy="1e308" rx="5" ry="3" transform="scale(10)"/>',
+            '<polygon points="0,0 10,0 0,10" transform="scale(1e308)"/>',
+            '<g transform="scale(2)"><rect x="1e308" width="10" height="5" transform="scale(2)"/></g>',
+            '<rect x="1e308" width="1e308" height="5"/>',
+        ):
+            with self.subTest(body=body):
+                result = preflight_svg(svg(body))
+                self.assertFalse(result.is_importable)
+                self.assertIn("INVALID_GEOMETRY_VALUE", diagnostic_codes(result))
+                self.assertTrue(any("coordinates must be finite" in item.message for item in result.fatal_diagnostics))
+
+    def test_viewport_scaling_checks_the_actual_geometry_points(self) -> None:
+        result = preflight_svg(svg(
+            '<rect width="10" height="5"/>',
+            'width="1e308mm" height="1e308mm" viewBox="0 0 1 1"',
+        ))
+        self.assertFalse(result.is_importable)
+        self.assertIn("INVALID_GEOMETRY_VALUE", diagnostic_codes(result))
+
+    def test_relative_curve_controls_and_reflections_must_resolve_finitely(self) -> None:
+        for data in (
+            'M1e308 0 c1e308 0 1e308 10 0 10 L0 10 L0 0 Z',
+            'M1e308 0 q1e308 0 0 10 L0 10 Z',
+            'M1e308 0 s1e308 10 0 10 L0 10 Z',
+            'M0 0 C0 0 -1e308 0 1e308 10 S1 20 0 20 Z',
+            'M0 0 Q-1e308 0 1e308 10 T0 20 Z',
+        ):
+            with self.subTest(data=data):
+                result = preflight_svg(svg(f'<path d="{data}"/>'))
+                self.assertFalse(result.is_importable)
+                self.assertIn("MALFORMED_PATH_DATA", diagnostic_codes(result))
+                self.assertTrue(any("Resolved geometry coordinates must be finite" in item.message for item in result.fatal_diagnostics))
+
+    def test_path_endpoints_and_controls_must_be_finite_after_transforming(self) -> None:
+        for data in (
+            'M0 0 L1e308 0 L0 10 Z',
+            'M0 0 C1e308 0 1e308 10 0 10 Z',
+            'M0 0 Q1e308 0 0 10 Z',
+        ):
+            with self.subTest(data=data):
+                result = preflight_svg(svg(f'<path d="{data}" transform="scale(10)"/>'))
+                self.assertFalse(result.is_importable)
+                self.assertIn("MALFORMED_PATH_DATA", diagnostic_codes(result))
+                self.assertTrue(any("Transformed geometry coordinates must be finite" in item.message for item in result.fatal_diagnostics))
+
+    def test_ordinary_transformed_primitives_and_curves_remain_importable(self) -> None:
+        result = preflight_svg(svg(
+            '<g transform="translate(2 3) scale(2)">'
+            '<rect x="1cm" y="2mm" width="10" height="5"/>'
+            '<circle cx="10" cy="10" r="5"/>'
+            '<ellipse cx="20" cy="10" rx="5" ry="3"/>'
+            '<path d="M0 0 c2 0 3 2 5 3 s3 2 5 3 q2 2 5 3 t5 3 L0 12 Z"/>'
+            '</g>'
+        ))
+        self.assertTrue(result.is_importable, result.to_dict())
+        self.assertEqual(result.metadata.candidate_count, 4)
+
     def test_important_effect_wins_over_a_later_normal_declaration(self) -> None:
         for effect in ("clip-path", "mask", "filter"):
             for marker in ("!important", "! IMPORTANT"):

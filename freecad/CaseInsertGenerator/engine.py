@@ -2022,7 +2022,6 @@ def generate_project(spec, document=None):
     occupied = {key: [] for key in carriers}
     extra_parts = []
     warnings = []
-    loose_storage_count = 0
     unplaced_ids = {
         str(item.get("object_id")) for item in normalized.get("unplaced", [])
         if isinstance(item, dict) and item.get("object_id")
@@ -2051,9 +2050,6 @@ def generate_project(spec, document=None):
     for obj in normalized.get("objects", []):
         if obj["id"] in unplaced_ids:
             continue
-        if obj["type"] in (
-                "removable_bin", "existing_container_bay", "divider_region"):
-            loose_storage_count += 1
         layer = obj.get("layer", "lower") if use_layers else "lower"
         if layer not in carriers:
             raise ValueError("Object %s targets an unavailable layer" % obj["id"])
@@ -2296,13 +2292,7 @@ def generate_project(spec, document=None):
         warnings.append(
             "Shared panel and quarter-turn clips are a printable prototype; "
             "calibrate the retention coupon and loaded carry before release.")
-    elif containment_mode == "none" and loose_storage_count:
-        lid_source, lid_clearance = _lid_clearance(params)
-        if lid_clearance is None or lid_clearance > 0.0:
-            warnings.append(
-                "Loose storage has no containment while closed-lid clearance "
-                "is unknown or positive; select a shared "
-                "panel or individual bin lids before carrying the case.")
+    warnings.extend(model_api.uncovered_storage_warnings(normalized))
 
     source_parts = []
     for layer in ("lower", "upper"):

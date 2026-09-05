@@ -261,6 +261,7 @@ class _PaintContext:
     visibility: str = "visible"
     displayed: bool = True
     fill_rule: str = "nonzero"
+    geometry_effects: tuple[str, ...] = ()
 
 
 def preflight_svg_file(path: str | Path, *, max_bytes: int = DEFAULT_MAX_BYTES) -> SvgPreflightResult:
@@ -378,9 +379,10 @@ def parse_length_mm(value: str) -> float:
         )
     number = float(match.group(1))
     unit = (match.group(2) or "").lower()
-    if not math.isfinite(number):
+    millimetres = number * _LENGTH_FACTORS[unit]
+    if not math.isfinite(millimetres):
         raise ValueError(f"Length {value!r} is not finite")
-    return number * _LENGTH_FACTORS[unit]
+    return millimetres
 
 
 def apply_matrix(matrix: Matrix, x: float, y: float) -> tuple[float, float]:
@@ -543,12 +545,12 @@ def _parse_viewport(root: ET.Element, diagnostics: list[SvgDiagnostic]) -> Optio
         return None
 
     assert width_mm is not None and height_mm is not None
-    if width_mm <= 0 or height_mm <= 0:
+    if not all(math.isfinite(value) and value > 0 for value in (width_mm, height_mm)):
         diagnostics.append(
             SvgDiagnostic(
                 FATAL,
                 "INVALID_VIEWPORT_SIZE",
-                "SVG width and height must both be greater than zero.",
+                "SVG width and height must both be finite and greater than zero.",
                 path,
                 element_id,
             )
@@ -558,6 +560,8 @@ def _parse_viewport(root: ET.Element, diagnostics: list[SvgDiagnostic]) -> Optio
     raw_par = root.get("preserveAspectRatio", "xMidYMid meet").strip() or "xMidYMid meet"
     try:
         canonical_par, matrix = _viewbox_matrix(width_mm, height_mm, view_box, raw_par)
+        if not all(math.isfinite(value) for value in matrix):
+            raise ValueError("Viewport normalization must produce finite coordinates.")
     except ValueError as exc:
         diagnostics.append(SvgDiagnostic(FATAL, "INVALID_ASPECT_RATIO", str(exc), path, element_id))
         return None
@@ -711,6 +715,10 @@ def _walk_svg(
         except ValueError as exc:
             diagnostics.append(SvgDiagnostic(FATAL, "INVALID_TRANSFORM", str(exc), path, element_id))
     current_transform = _matrix_multiply(parent_transform, local_transform)
+    if not all(math.isfinite(value) for value in current_transform):
+        diagnostics.append(SvgDiagnostic(
+            FATAL, "INVALID_TRANSFORM", "Combined transforms must be finite.", path, element_id))
+        current_transform = IDENTITY_MATRIX
     current_depth = transform_depth + int(has_local_transform)
     if has_local_transform and transform_depth > 0:
         nested_paths.append(path)
@@ -828,12 +836,13 @@ def _inspect_geometry(
         )
         return
 
-    if any(element.get(name) for name in ("clip-path", "mask", "filter")):
+    if paint.geometry_effects:
         diagnostics.append(
             SvgDiagnostic(
                 FATAL,
                 "UNSUPPORTED_GEOMETRY_EFFECT",
-                "Clipping, masks, and filters are not normalized; flatten the visible result to paths.",
+                "Clipping, masks, and filters on geometry or its ancestors are not normalized; "
+                "flatten the visible result to paths.",
                 path,
                 element_id,
             )
@@ -903,11 +912,17 @@ def _inspect_geometry(
     elif tag == "rect":
         _validate_positive_geometry_length(element, "width", errors)
         _validate_positive_geometry_length(element, "height", errors)
+        for name in ("x", "y", "rx", "ry"):
+            _validate_optional_geometry_length(element, name, errors)
     elif tag == "circle":
         _validate_positive_geometry_length(element, "r", errors)
+        for name in ("cx", "cy"):
+            _validate_optional_geometry_length(element, name, errors)
     elif tag == "ellipse":
         _validate_positive_geometry_length(element, "rx", errors)
         _validate_positive_geometry_length(element, "ry", errors)
+        for name in ("cx", "cy"):
+            _validate_optional_geometry_length(element, name, errors)
 
     fill_rule = paint.fill_rule
     if fill_rule not in {"nonzero", "evenodd"}:
@@ -924,6 +939,10 @@ def _inspect_geometry(
         return
 
     local_to_mm = _matrix_multiply(viewport.user_to_mm, transform)
+    if not all(math.isfinite(value) for value in local_to_mm):
+        diagnostics.append(SvgDiagnostic(
+            FATAL, "INVALID_TRANSFORM", "Normalized transforms must be finite.", path, element_id))
+        return
     raw_attributes = {
         _split_tag(key)[1]: value
         for key, value in sorted(element.attrib.items())
@@ -942,6 +961,19 @@ def _inspect_geometry(
             attributes=MappingProxyType(raw_attributes),
         )
     )
+
+
+def _validate_optional_geometry_length(
+    element: ET.Element,
+    name: str,
+    errors: list[tuple[str, str]],
+) -> None:
+    raw = element.get(name)
+    if raw is not None:
+        try:
+            parse_length_mm(raw)
+        except ValueError as exc:
+            errors.append(("INVALID_GEOMETRY_VALUE", f"Invalid {name}: {exc}"))
 
 
 def _validate_positive_geometry_length(
@@ -1069,7 +1101,10 @@ def _validate_path_data(raw: str) -> _PathValidation:
         if upper == "M":
             if active is not None:
                 subpaths.append(active)
-            point = _endpoint_for_command(upper, values, current, relative)
+            try:
+                point = _endpoint_for_command(upper, values, current, relative)
+            except ValueError as exc:
+                return _PathValidation(0, 0, (("MALFORMED_PATH_DATA", str(exc)),))
             current = point
             start = point
             active = _PathSubpath(points=[point])
@@ -1085,7 +1120,10 @@ def _validate_path_data(raw: str) -> _PathValidation:
             )
             continue
 
-        endpoint = _endpoint_for_command(upper, values, current, relative)
+        try:
+            endpoint = _endpoint_for_command(upper, values, current, relative)
+        except ValueError as exc:
+            return _PathValidation(0, 0, (("MALFORMED_PATH_DATA", str(exc)),))
         active.drawable_segments += 1
         if upper not in {"L", "H", "V"}:
             active.linear_only = False
@@ -1134,7 +1172,10 @@ def _tokenize_path(raw: str) -> list[str]:
         gap = raw[end : match.start()]
         if not _SAFE_SEPARATORS_RE.match(gap):
             raise ValueError(f"Unexpected path data near {gap!r}.")
-        tokens.append(match.group(0))
+        token = match.group(0)
+        if not _COMMAND_RE.match(token) and not math.isfinite(float(token)):
+            raise ValueError("Path coordinates must be finite.")
+        tokens.append(token)
         end = match.end()
     tail = raw[end:]
     if not _SAFE_SEPARATORS_RE.match(tail):
@@ -1157,13 +1198,16 @@ def _endpoint_for_command(
         endpoint = (x, values[0])
     else:
         endpoint = (values[-2], values[-1])
-    if not relative:
-        return endpoint
-    if command == "H":
-        return (x + values[0], y)
-    if command == "V":
-        return (x, y + values[0])
-    return (x + values[-2], y + values[-1])
+    if relative:
+        if command == "H":
+            endpoint = (x + values[0], y)
+        elif command == "V":
+            endpoint = (x, y + values[0])
+        else:
+            endpoint = (x + values[-2], y + values[-1])
+    if not all(math.isfinite(value) for value in endpoint):
+        raise ValueError("Resolved path coordinates must be finite.")
+    return endpoint
 
 
 def _parse_transform(raw: str) -> Matrix:
@@ -1181,6 +1225,8 @@ def _parse_transform(raw: str) -> Matrix:
         values = _parse_number_list(match.group(2))
         operation = _transform_operation(name, values)
         result = _matrix_multiply(result, operation)
+        if not all(math.isfinite(value) for value in result):
+            raise ValueError("Combined transforms must be finite.")
         end = match.end()
     if not found or not _SAFE_SEPARATORS_RE.match(raw[end:]):
         raise ValueError(f"Malformed transform {raw!r}.")
@@ -1249,6 +1295,10 @@ def _merge_paint(parent: _PaintContext, element: ET.Element) -> _PaintContext:
     visibility = property_value("visibility", parent.visibility).lower()
     display = property_value("display", "inline").lower()
     fill_rule = property_value("fill-rule", parent.fill_rule).lower()
+    local_effects = tuple(
+        name for name in ("clip-path", "mask", "filter")
+        if property_value(name, "none").lower() != "none"
+    )
     return _PaintContext(
         fill=fill,
         stroke=stroke,
@@ -1258,6 +1308,9 @@ def _merge_paint(parent: _PaintContext, element: ET.Element) -> _PaintContext:
         visibility=visibility,
         displayed=parent.displayed and display != "none",
         fill_rule=fill_rule,
+        # A child's 'none' cannot cancel an effect applied to its parent's
+        # rendered group. Keep ancestor effects until visible geometry is found.
+        geometry_effects=tuple(dict.fromkeys(parent.geometry_effects + local_effects)),
     )
 
 
@@ -1271,7 +1324,7 @@ def _parse_inline_style(raw: str) -> dict[str, str]:
         if ":" not in declaration:
             raise ValueError(f"Malformed inline style declaration {declaration!r}.")
         name, value = declaration.split(":", 1)
-        name = name.strip()
+        name = name.strip().lower()
         value = value.strip()
         if not name or not value:
             raise ValueError(f"Malformed inline style declaration {declaration!r}.")

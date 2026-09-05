@@ -1,8 +1,10 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
 import copy
+import math
 import unittest
 from collections.abc import Mapping
+from types import MappingProxyType
 
 from freecad.CaseInsertGenerator.project_model import (
     CONTAINMENT_MODES,
@@ -20,6 +22,7 @@ from freecad.CaseInsertGenerator.project_model import (
     lid_panel_height_budget,
     lid_panel_plan,
     layout_project,
+    uncovered_storage_warnings,
     validate_project,
 )
 
@@ -99,6 +102,64 @@ def lid_panel_spec(
 
 
 class ProjectSchemaTests(unittest.TestCase):
+    def test_verification_must_be_a_mapping_before_persistence(self):
+        for value in ([], None, "measured", 1):
+            source = project_spec()
+            source["verification"] = value
+            with self.subTest(value=value), self.assertRaises(ProjectValidationError) as caught:
+                validate_project(source)
+            self.assertIn(
+                ("verification", "invalid_mapping"),
+                {(issue.path, issue.code) for issue in caught.exception.issues},
+            )
+
+    def test_verification_mapping_is_owned_and_survives_normalization(self):
+        source = project_spec()
+        record = {"clearance": {"source": "measured", "millimetres": 12}}
+        source["verification"] = MappingProxyType(record)
+        normalized = validate_project(source)
+        self.assertEqual(normalized["verification"], record)
+        self.assertIsInstance(normalized["verification"], dict)
+        record["clearance"]["millimetres"] = 1
+        self.assertEqual(normalized["verification"]["clearance"]["millimetres"], 12)
+
+    def test_overflowing_core_values_report_a_validation_issue(self):
+        source = project_spec()
+        source["case"]["internal_length"] = 10 ** 400
+        with self.assertRaises(ProjectValidationError) as caught:
+            validate_project(source)
+        self.assertIn(
+            ("case.internal_length", "invalid_number"),
+            {(issue.path, issue.code) for issue in caught.exception.issues},
+        )
+
+    def test_every_cad_numeric_object_option_rejects_nonfinite_values(self):
+        for option in ("diameter", "scale", "wall", "clearance", "rows", "columns"):
+            for value in (math.nan, math.inf, -math.inf, 10 ** 400):
+                source = project_spec(objects=[project_object(
+                    "invalid", options={option: value},
+                )])
+                with self.subTest(option=option, value=str(value)[:20]):
+                    with self.assertRaises(ProjectValidationError) as caught:
+                        validate_project(source)
+                    self.assertIn(
+                        (f"objects[0].{option}", "invalid_number"),
+                        {(issue.path, issue.code) for issue in caught.exception.issues},
+                    )
+
+    def test_divider_counts_require_positive_whole_numbers(self):
+        for option in ("rows", "columns"):
+            for value, code in ((0, "number_out_of_range"), (-1, "number_out_of_range"), (1.5, "invalid_integer")):
+                source = project_spec(objects=[project_object(
+                    "divider", "divider_region", options={option: value},
+                )])
+                with self.subTest(option=option, value=value), self.assertRaises(ProjectValidationError) as caught:
+                    validate_project(source)
+                self.assertIn(
+                    (f"objects[0].{option}", code),
+                    {(issue.path, issue.code) for issue in caught.exception.issues},
+                )
+
     def test_schema_constants_define_the_version_one_contract(self):
         self.assertEqual(
             OBJECT_TYPES,
@@ -457,6 +518,38 @@ class GeometryGenerationResultTests(unittest.TestCase):
 
 
 class DeterministicLayoutTests(unittest.TestCase):
+    def test_containment_warnings_cover_each_loose_storage_type_and_mode(self):
+        kinds = ("removable_bin", "existing_container_bay", "divider_region")
+        for kind in kinds:
+            for mode in CONTAINMENT_MODES:
+                for evidence, clearance in (("unknown", None), ("measured", 4.0), ("measured", 0.0)):
+                    source = project_spec(
+                        objects=[project_object("loose", kind)],
+                        containment={"mode": mode},
+                        lid={"source": evidence, "clearance_mm": clearance},
+                    )
+                    with self.subTest(kind=kind, mode=mode, clearance=clearance):
+                        result = generate_layouts(source)[0]
+                        warnings = [item for item in result.warnings if "no containment" in item]
+                        uncovered = clearance != 0.0 and mode != "shared_panel" and not (
+                            mode == "individual_lids" and kind == "removable_bin"
+                        )
+                        self.assertEqual(len(warnings), int(uncovered))
+                        if uncovered:
+                            self.assertIn("'loose'", warnings[0])
+                            self.assertIn(kind.replace("_", " "), warnings[0])
+
+    def test_mixed_storage_warns_only_for_uncovered_placed_objects(self):
+        source = project_spec(
+            objects=[project_object(kind, kind) for kind in OBJECT_TYPES],
+            containment={"mode": "individual_lids"},
+        )
+        source["unplaced"] = [{"object_id": "existing_container_bay"}]
+        warnings = uncovered_storage_warnings(validate_project(source))
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("'divider_region'", warnings[0])
+        self.assertIn("individual bin lids cover removable bins only", warnings[0])
+
     def test_returns_exactly_three_layouts_in_stable_order(self):
         source = project_spec(
             objects=[project_object("a"), project_object("b", width=25, depth=20)]

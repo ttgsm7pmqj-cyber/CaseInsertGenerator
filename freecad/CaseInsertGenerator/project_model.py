@@ -1278,6 +1278,27 @@ def validate_project(spec: Mapping[str, Any]) -> dict[str, Any]:
                 issues,
                 default=0.0,
             )
+        for option in ("diameter", "scale", "wall", "clearance"):
+            if option in extra_fields:
+                extra_fields[option] = _coerce_number(
+                    extra_fields[option],
+                    f"{object_path}.{option}",
+                    issues,
+                    minimum=0.0,
+                    exclusive=option != "clearance",
+                )
+        for option in ("rows", "columns"):
+            if option in extra_fields:
+                value = _coerce_number(
+                    extra_fields[option], f"{object_path}.{option}", issues,
+                    default=2.0, minimum=1.0,
+                )
+                if not value.is_integer():
+                    issues.append(ValidationIssue(
+                        f"{object_path}.{option}", "invalid_integer",
+                        f"{object_path}.{option} must be a whole number.",
+                    ))
+                extra_fields[option] = int(value)
         if "rotatable" in extra_fields and not isinstance(
             extra_fields["rotatable"], bool
         ):
@@ -1325,6 +1346,8 @@ def validate_project(spec: Mapping[str, Any]) -> dict[str, Any]:
                     ),
                 )
             )
+
+    verification = _mapping_field(spec, "verification", "verification", issues)
 
     if issues:
         raise ProjectValidationError(issues)
@@ -1421,7 +1444,9 @@ def validate_project(spec: Mapping[str, Any]) -> dict[str, Any]:
     }
     normalized.update(
         {
-            field_name: copy.deepcopy(spec[field_name])
+            field_name: copy.deepcopy(
+                dict(verification) if field_name == "verification" else spec[field_name]
+            )
             for field_name in _PERSISTED_PROJECT_FIELDS
             if field_name in spec
         }
@@ -1939,12 +1964,41 @@ def _project_warnings(project: Mapping[str, Any]) -> tuple[str, ...]:
         warnings.append(
             "Lid clearance is unknown; layouts use only the case insert depth."
         )
-    if project["containment"]["mode"] == "none" and any(
-        item["type"] in _LOOSE_STORAGE_TYPES for item in project["objects"]
-    ):
+    warnings.extend(uncovered_storage_warnings(project))
+    return tuple(warnings)
+
+
+def uncovered_storage_warnings(project: Mapping[str, Any]) -> tuple[str, ...]:
+    """Explain which placed loose-storage objects lack generated containment.
+
+    The caller supplies a normalized project. Individual lids cover removable
+    bins only; selecting that mode cannot cover divider regions or container
+    bays. A measured zero lid gap keeps the existing closed-lid exception.
+    """
+
+    mode = project["containment"]["mode"]
+    if mode == "shared_panel" or project["lid"]["clearance_mm"] == 0.0:
+        return ()
+    unplaced_ids = {
+        item.get("object_id") for item in project.get("unplaced", [])
+        if isinstance(item, Mapping)
+    }
+    warnings = []
+    for item in project["objects"]:
+        kind = item["type"]
+        if kind not in _LOOSE_STORAGE_TYPES or item["id"] in unplaced_ids:
+            continue
+        if mode == "individual_lids" and kind == "removable_bin":
+            continue
+        remedy = (
+            "select a shared panel or individual bin lids"
+            if kind == "removable_bin" else
+            "select a shared panel; individual bin lids cover removable bins only"
+        )
         warnings.append(
-            "Containment is set to none for loose storage; select a shared panel "
-            "or individual lids before carrying the case."
+            f"Loose storage {kind.replace('_', ' ')} {item['id']!r} has no containment "
+            f"while closed-lid clearance is unknown or positive; {remedy} "
+            "before carrying the case."
         )
     return tuple(warnings)
 
@@ -2160,7 +2214,10 @@ def _coerce_number(
             ValidationIssue(path, "invalid_number", f"{path} must be a finite number.")
         )
         return float(default or 0.0)
-    normalized = float(value)
+    try:
+        normalized = float(value)
+    except (OverflowError, ValueError):
+        normalized = math.inf
     if not math.isfinite(normalized):
         issues.append(
             ValidationIssue(path, "invalid_number", f"{path} must be a finite number.")

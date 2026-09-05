@@ -46,6 +46,18 @@ class ControlPersistenceTests(unittest.TestCase):
         self.assertEqual(controller._next_object_id("rectangular_pocket"),
                          "rectangular-pocket-04")
 
+    def test_unchanged_legacy_controls_keep_omitted_optional_keys(self):
+        controller = engine.CaseInsertDialog.__new__(engine.CaseInsertDialog)
+        controller._base_legacy_params = {"insert_type": "Dividers"}
+        controller._initial_legacy_controls = {
+            "insert_type": "Dividers", "rows": 1, "columns": 1,
+        }
+        controller._legacy_controls = lambda: dict(controller._initial_legacy_controls)
+        self.assertEqual(controller._params(), {"insert_type": "Dividers"})
+        controller._legacy_controls = lambda: dict(controller._initial_legacy_controls, rows=2)
+        self.assertEqual(controller._params()["rows"], 2)
+        self.assertEqual(controller._params()["columns"], 1)
+
     def test_bound_document_ignores_global_active_document(self):
         first, second = object(), object()
         controller = engine.CaseInsertDialog.__new__(engine.CaseInsertDialog)

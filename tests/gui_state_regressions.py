@@ -307,6 +307,121 @@ class GuiStateRegressions(unittest.TestCase):
     def test_case_blank_parameters_roundtrip(self):
         self._legacy_roundtrip(4)
 
+    def _minimal_api_roundtrip(self, mode):
+        # _as_float reads required keys; its third argument is a minimum.
+        # Omit only actual optional keys consumed through params.get().
+        params = {
+            "internal_length": 160.0, "internal_width": 110.0,
+            "insert_depth": 32.0, "corner_radius": 5.0,
+            "side_clearance": 0.0, "bottom_clearance": 0.0,
+            "taper_allowance": 0.0,
+        }
+        if mode == 2:
+            params.update(insert_type="Dividers", base_thickness=2.4,
+                          outer_wall=2.4, divider_wall=1.6, divider_height=20.0)
+        elif mode == 1:
+            # SVG Cutout is itself the default when insert_type is omitted.
+            params.update(
+                svg_path=str(Path(E.macro_directory()) / "examples" / "example_cutout.svg"),
+                svg_scale=0.3, svg_x=10.0, svg_y=10.0, svg_rotation=0.0,
+                svg_clearance=0.0, cutout_depth=6.0)
+        else:
+            params["insert_type"] = "Case Blank"
+        doc = self.document("MinimalAPI")
+        E.generate_insert(params, document=doc)
+        volume = sum(obj.Shape.Volume for obj in E.active_results(doc))
+        stored = json.loads(E._find_parameter_object(doc).ParameterJSON)
+        path = self.output / "minimal-api.FCStd"
+        E.save_fcstd(str(path), doc=doc)
+        doc = self.reopen(doc, path)
+        controller = self.controller(doc)
+        self.assertEqual(controller.mode_combo.currentIndex(), mode)
+        self.assertEqual(controller.rows.value(), 1)
+        self.assertEqual(controller.columns.value(), 1)
+        self.assertEqual(controller.bed_x.value(), E.DEFAULT_BED)
+        self.assertEqual(controller.bed_y.value(), E.DEFAULT_BED)
+        self.assertEqual(controller.bed_margin.value(), 5.0)
+        self.assertFalse(controller.through_cut.isChecked())
+        self.assertFalse(controller.invert_svg.isChecked())
+        self.assertFalse(controller.split_for_bed.isChecked())
+        self.assertEqual(controller.lid_clearance_source.currentData(), "unknown")
+        self.assertEqual(controller._params(), stored)
+        controller._generate()
+        self.assertEqual(controller.errors, [])
+        self.assertEqual(json.loads(E._find_parameter_object(doc).ParameterJSON), stored)
+        self.assertAlmostEqual(sum(obj.Shape.Volume for obj in E.active_results(doc)), volume, places=3)
+        self.details["mode"] = mode
+        self.details["unchanged_volume_mm3"] = volume
+
+    def test_minimal_api_divider_defaults_roundtrip(self):
+        self._minimal_api_roundtrip(2)
+
+    def test_minimal_api_svg_defaults_roundtrip(self):
+        self._minimal_api_roundtrip(1)
+
+    def test_minimal_api_blank_defaults_roundtrip(self):
+        self._minimal_api_roundtrip(4)
+
+    def test_reopened_auto_layout_does_not_repack_manual_edits_on_save(self):
+        spec = _spec()
+        spec["layout_strategy"] = "balanced"
+        spec["case"]["geometry_provenance"] = "Synthetic GUI regression"
+        doc = self.document("HistoricLayout", spec)
+        path = self.output / "automatic.FCStd"
+        E.save_fcstd(str(path), doc=doc)
+        doc = self.reopen(doc, path)
+        controller = self.controller(doc)
+        object_id = spec["objects"][0]["id"]
+        item = controller.project_canvas.items[object_id]
+        item.setPos(60.0, 30.0)
+        controller.QtWidgets.QApplication.processEvents()
+        moved = next(obj for obj in controller.project_canvas.to_objects() if obj["id"] == object_id)
+        self.assertEqual((moved["x"], moved["y"]), (60.0, 30.0))
+        saved = self.output / "manual.FCStd"
+        controller._save_path = lambda *_args: str(saved)
+        controller._save_fcstd()
+        self.assertEqual(controller.errors, [])
+        self.capture(controller, "manual-placement-saved")
+        controller.dialog.close()
+        doc = self.reopen(doc, saved)
+        project = E.load_project(doc)
+        pocket = next(obj for obj in project["objects"] if obj["id"] == object_id)
+        self.assertEqual((pocket["x"], pocket["y"]), (60.0, 30.0))
+        self.assertEqual(project["case"]["geometry_provenance"], spec["case"]["geometry_provenance"])
+        probe = Part.makeBox(2.0, 2.0, 2.0, App.Vector(65.0, 35.0, 25.0))
+        self.assertAlmostEqual(E.active_result(doc).Shape.common(probe).Volume, 0.0, places=5)
+        self.details["reopened_xy_mm"] = [pocket["x"], pocket["y"]]
+
+    def test_external_lid_shape_change_blocks_generate_save_and_exports(self):
+        doc = self.document("ShapeChange", _lid_spec(), lid=True)
+        controller = self.controller(doc)
+        panel = E.active_results(doc)[0]
+        bounds = panel.Shape.BoundBox
+        panel.Shape = Part.makeBox(bounds.XLength, bounds.YLength, 10.0)
+        doc.recompute()
+        controller._save_path = lambda *_args: str(self.output / "stale.FCStd")
+        controller._export_step()
+        controller._export_stl()
+        controller._save_fcstd()
+        controller._generate()
+        self.assertEqual(len(controller.errors), 4)
+        self.assertTrue(all("geometry changed outside" in error for error in controller.errors))
+        self.assertEqual(list(self.output.iterdir()), [])
+        self.assertEqual(panel.Shape.BoundBox.ZLength, 10.0)
+        self.assertEqual(E.load_project(doc)["lid_panel"]["thickness_mm"], 3.0)
+
+    def test_external_part_placement_change_blocks_export(self):
+        doc = self.document("PlacementChange", _spec())
+        controller = self.controller(doc)
+        part = E.active_result(doc)
+        part.Placement = App.Placement(App.Vector(5.0, 0.0, 0.0), App.Rotation())
+        doc.recompute()
+        controller._save_path = lambda *_args: str(self.output / "moved.step")
+        controller._export_step()
+        self.assertEqual(len(controller.errors), 1)
+        self.assertIn("geometry changed outside", controller.errors[0])
+        self.assertFalse((self.output / "moved.step").exists())
+
     def test_supported_metadata_and_precision_survive_gui_save(self):
         spec = _spec(object_id="rectangular-pocket-02")
         spec["layers"].update(floor_mm=4.0, ratio=0.54321)

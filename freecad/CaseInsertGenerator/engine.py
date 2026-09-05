@@ -3512,6 +3512,7 @@ class CaseInsertDialog(object):
         self._initial_legacy_controls = {}
         self._generation_signature = None
         self._generated_controls_signature = None
+        self._geometry_snapshot = None
         self._generated_has_parts = False
         self._load_error = None
         self._hydrating = True
@@ -3522,6 +3523,7 @@ class CaseInsertDialog(object):
         self._refresh_export_parts()
         if self._generation_signature is not None:
             self._generated_controls_signature = self._controls_signature()
+            self._geometry_snapshot = self._geometry_state(self._document)
         self._connect_export_changes()
         self._mode_changed()
         self._set_document_title()
@@ -3563,6 +3565,26 @@ class CaseInsertDialog(object):
                 "This document's generator project changed outside this dialog. "
                 "Reopen the generator to load its current settings.")
         return self._document
+
+    @staticmethod
+    def _geometry_state(doc):
+        """Serialize generated geometry only at load/generation/action boundaries."""
+        params = _find_parameter_object(doc)
+        names = list(getattr(params, "GeneratedResults", []) or [])
+        if not names and not getattr(params, "GeneratedResult", ""):
+            return ()
+        return tuple(
+            (obj.Name,
+             hashlib.sha256(obj.Shape.copy().exportBrepToString().encode("utf-8")).hexdigest(),
+             tuple(obj.Placement.toMatrix().A))
+            for obj in active_results(doc))
+
+    def _assert_geometry_unchanged(self, doc):
+        if (self._geometry_snapshot is not None and
+                self._geometry_state(doc) != self._geometry_snapshot):
+            raise RuntimeError(
+                "Generated geometry changed outside this dialog. Reopen the "
+                "generator to review the current document before continuing.")
 
     def _spin(self, value=0.0, minimum=0.0, maximum=2000.0, decimals=2, suffix=" mm"):
         widget = self.QtWidgets.QDoubleSpinBox()
@@ -4952,6 +4974,18 @@ class CaseInsertDialog(object):
     def _load_legacy_parameters(self, params):
         if not isinstance(params, dict):
             raise ValueError("Stored insert parameters must be a JSON object")
+        stored = json.loads(json.dumps(params))
+        # These are the optional defaults used by generate_insert,
+        # build_divider_insert, build_svg_insert, and _lid_clearance.
+        # Numeric values read by _as_float are required, not defaults.
+        optional = {
+            "case_model": "Custom Case", "insert_type": "SVG Cutout",
+            "rows": 1, "columns": 1, "divider_layout": "Equal grid",
+            "bed_x": DEFAULT_BED, "bed_y": DEFAULT_BED, "bed_margin": 5.0,
+            "split_for_bed": False, "through_cut": False, "invert_svg": False,
+            "lid_clearance_source": "unknown", "lid_clearance": 0.0,
+        }
+        params = dict(optional, **params)
         modes = {"SVG Cutout": 1, "Dividers": 2, "Case Blank": 4}
         mode = params.get("insert_type")
         if mode not in modes:
@@ -5008,7 +5042,7 @@ class CaseInsertDialog(object):
                     entries.append((50.0 if token == "*" else float(token), token == "*"))
                 editor.set_bays(entries)
         self.mode_combo.setCurrentIndex(modes[mode])
-        self._base_legacy_params = json.loads(json.dumps(params))
+        self._base_legacy_params = stored
         self._initial_legacy_controls = self._legacy_controls()
         self._generation_signature = self._request_signature(self._current_request())
         self.status.setText("Loaded editable %s from %s" % (mode, self._document_name))
@@ -5183,9 +5217,15 @@ class CaseInsertDialog(object):
         }
 
     def _params(self):
+        controls = self._legacy_controls()
+        if (self._initial_legacy_controls and
+                controls == self._initial_legacy_controls):
+            # An unchanged API-authored file keeps its omitted optional keys,
+            # instead of converting unrelated GUI starter values to settings.
+            return json.loads(json.dumps(self._base_legacy_params))
         return _overlay_edited_controls(
             self._base_legacy_params, self._initial_legacy_controls,
-            self._legacy_controls())
+            controls)
 
     def _refresh_export_parts(self, *_args, **kwargs):
         """Refresh the generated-part checklist without losing user choices."""
@@ -5286,8 +5326,14 @@ class CaseInsertDialog(object):
     def _generate_current(self, request):
         mode, settings = request
         doc = self._bound_document(create=True)
+        self._assert_geometry_unchanged(doc)
         if mode == 0:
-            report = generate_project(settings, document=doc)
+            authored = dict(settings)
+            # Auto Layout resolves canvas positions when explicitly applied.
+            # A strategy saved by an earlier API call is historical here,
+            # not an instruction to repack the user's current manual edits.
+            authored.pop("layout_strategy", None)
+            report = generate_project(authored, document=doc)
         elif mode == 3:
             budget = _project_module().lid_panel_height_budget(settings)
             report = (generate_lid_panel_project(settings, document=doc)
@@ -5305,6 +5351,7 @@ class CaseInsertDialog(object):
             self._initial_legacy_controls = self._legacy_controls()
         self._generation_signature = self._request_signature(self._current_request())
         self._generated_controls_signature = self._controls_signature()
+        self._geometry_snapshot = self._geometry_state(doc)
         self._refresh_export_parts()
         if not isinstance(report, dict) and hasattr(report, "to_mapping"):
             report = report.to_mapping()
@@ -5360,6 +5407,7 @@ class CaseInsertDialog(object):
     def _export_model(self, format_name, exporter, pattern, suffix):
         try:
             doc = self._bound_document()
+            self._assert_geometry_unchanged(doc)
             request = self._current_request()
             if request[0] == 3:
                 budget = _project_module().lid_panel_height_budget(request[1])
@@ -5382,6 +5430,7 @@ class CaseInsertDialog(object):
                 # A file dialog is modeless with respect to document events.
                 # Recheck ownership after the picker and collision confirmation.
                 self._bound_document()
+                self._assert_geometry_unchanged(doc)
                 if self._request_signature(self._current_request()) != self._generation_signature:
                     raise RuntimeError("Settings changed while choosing export files. Generate again.")
                 outputs = exporter(path, doc=doc, selected_names=selected_names,
@@ -5407,6 +5456,7 @@ class CaseInsertDialog(object):
                 if self._request_signature(request) != self._generation_signature:
                     self._generate_current(request)
                 doc = self._bound_document()
+                self._assert_geometry_unchanged(doc)
                 save_fcstd(path, doc=doc)
                 self.status.setText("Saved current settings and model to %s" % path)
         except Exception as exc:

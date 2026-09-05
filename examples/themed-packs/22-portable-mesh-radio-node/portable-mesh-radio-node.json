@@ -485,6 +485,10 @@
     "unplaced": [],
     "warnings": [
       "Upper carrier includes keyed alignment, support surfaces, and two side lift-access notches.",
+      "Loose storage existing container bay 'node' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+      "Loose storage existing container bay 'protected-power' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+      "Loose storage divider region 'field-spares' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+      "Loose storage existing container bay 'instructions' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
       "Lower carrier split into 2 bed-sized parts with straight butt seams.",
       "Upper carrier split into 2 bed-sized parts with straight butt seams."
     ]

@@ -1,12 +1,12 @@
 {
   "compatibility_claim": "none",
   "contact_sheet": {
-    "bytes": 628071,
+    "bytes": 613994,
     "cells": 23,
     "height": 1890,
     "layout": "4 columns x 6 rows",
     "path": "contact-sheet.png",
-    "sha256": "71c2dd44ed79268741daae43fdc4f3fd03f9dbfc56279329fd2de285deecf704",
+    "sha256": "6ec7fdbf42e6459b00023a0139d9fda7b31acf0abb9b27cfbfbb128f57759fd7",
     "width": 1680
   },
   "examples": [
@@ -20,7 +20,7 @@
       "description": "Portable fabric repair, thread, fasteners, shears, and small tools.",
       "directory": "01-field-mending",
       "exploded_fcstd": {
-        "bytes": 84102,
+        "bytes": 83636,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 16.0,
@@ -139,20 +139,20 @@
           "tier_count": 4,
           "visibility_checks": 8
         },
-        "sha256": "c7685e441b9b081853ad0c6d13cbda2636dbbbfc8c0f1989baa5541beb990f4d"
+        "sha256": "ebbb5e12b1f88f85acdf11680e2729cf9700bca991b233e538740f5ff3746d8e"
       },
       "exploded_render": {
-        "bytes": 51353,
+        "bytes": 57478,
         "height": 1000,
-        "nonblank_sample_colours": 10,
+        "nonblank_sample_colours": 12,
         "path": "01-field-mending/field-mending-exploded.png",
-        "sha256": "3490a25b5646af50190079ee14ca230a3a947ec051bee82a2cdcfba1d07b9a41",
+        "sha256": "48bb6d12643c9809fa0fafc120f6ca754e5507fd59571c50873da874eccf8282",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 218,
+        "viewport_foreground_samples": 227,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 42875,
+        "bytes": 43123,
         "cold_reopen": true,
         "path": "01-field-mending/field-mending.FCStd",
         "portable_source_scan": {
@@ -160,7 +160,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "fc167807b66bf56d6e10757329964b1c9c77a338be7035dedfabff3e5fed59fe"
+        "sha256": "418e9b19b6b4b61786bae1e105b14af69b8223cb07cd998e34c45bd1fd6ebc3e"
       },
       "id": "theme.field-mending.v1",
       "layers": {
@@ -268,18 +268,18 @@
         }
       ],
       "render": {
-        "bytes": 24122,
+        "bytes": 24136,
         "height": 1000,
         "nonblank_sample_colours": 5,
         "path": "01-field-mending/field-mending.png",
-        "sha256": "523610cde6437e41360bad6d11145817335ace56daa2d8ce3f6d050215643c7e",
+        "sha256": "0b788dba0c8e6b0f14dd4225fe79325ce437d807dd0c4f88160bda3dc9f3fe01",
         "view": "native FreeCAD axonometric assembled view",
         "viewport_foreground_samples": 221,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.332031,
-        "changed_viewport_pixels": 1020,
+        "changed_ratio": 0.34375,
+        "changed_viewport_pixels": 1056,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -288,15 +288,16 @@
       "slug": "field-mending",
       "solid_count": 8,
       "spec": {
-        "bytes": 11586,
+        "bytes": 11804,
         "path": "01-field-mending/field-mending.json",
-        "sha256": "17cf97a5d450dfa262bd8e6dcabfad5abda24921430512ec68d2d5ce78abf5ae"
+        "sha256": "fbed2264864eb06c345939fe33121fd0ad504f3f1bbb74b84cfbbdb454547fc9"
       },
       "status": "pass",
       "title": "Field Mending Kit",
       "volume_mm3": 3159820.544923,
       "warnings": [
         "Upper carrier includes keyed alignment, support surfaces, and two side lift-access notches.",
+        "Loose storage divider region 'needle-cards' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
         "Lower carrier split into 2 bed-sized parts with straight butt seams.",
         "Upper carrier split into 2 bed-sized parts with straight butt seams."
       ]
@@ -311,7 +312,7 @@
       "description": "Palette, brushes, pigment pans, cups, and accessories.",
       "directory": "02-watercolour-field-studio",
       "exploded_fcstd": {
-        "bytes": 251535,
+        "bytes": 244661,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 17.6,
@@ -436,20 +437,20 @@
           "tier_count": 4,
           "visibility_checks": 9
         },
-        "sha256": "1268e15ac1a8746f62e5a9344c2a70e7e398f72165783d22823d5e9a12c95d92"
+        "sha256": "0a560f4cf21d6b60fbf8733249fa42c5946f6950478539e6f20f0e9847980853"
       },
       "exploded_render": {
-        "bytes": 66258,
+        "bytes": 69332,
         "height": 1000,
         "nonblank_sample_colours": 16,
         "path": "02-watercolour-field-studio/watercolour-field-studio-exploded.png",
-        "sha256": "ae27260685b4b0befa0165b9b69c36e98ea025ce6cc11d51de2d7a16ec4a11d5",
+        "sha256": "59cba7161006fc59c66ab570f8047488d4a050fc443f482972644283569f6ec7",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 229,
+        "viewport_foreground_samples": 225,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 116920,
+        "bytes": 116591,
         "cold_reopen": true,
         "path": "02-watercolour-field-studio/watercolour-field-studio.FCStd",
         "portable_source_scan": {
@@ -457,7 +458,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "e42efc9af3119c08e4d8da49314eb03a727706267aa149019301b3d7bfa503f9"
+        "sha256": "deec55b916e155856d9269a199c1684ec0859db49717681bc22615a85f790bd6"
       },
       "id": "theme.watercolour-field-studio.v1",
       "layers": {
@@ -576,13 +577,13 @@
         }
       ],
       "render": {
-        "bytes": 52868,
+        "bytes": 58580,
         "height": 1000,
-        "nonblank_sample_colours": 15,
+        "nonblank_sample_colours": 12,
         "path": "02-watercolour-field-studio/watercolour-field-studio.png",
-        "sha256": "f2831412bcaa4dae849dceb934bdef83fd880faea00a953918db714b478081ff",
+        "sha256": "efec6437db2f37187e43fe76685996034092c943c59fc9e0b3bc4f0fcd532136",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 247,
+        "viewport_foreground_samples": 243,
         "width": 1400
       },
       "render_pair_difference": {
@@ -620,7 +621,7 @@
       "description": "Lino blocks, brayer, cutters, and ink tins.",
       "directory": "03-linocut-printmaking",
       "exploded_fcstd": {
-        "bytes": 256967,
+        "bytes": 255401,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 18.4,
@@ -728,20 +729,20 @@
           "tier_count": 3,
           "visibility_checks": 8
         },
-        "sha256": "46b3dc171b544d87acaefe35f46957f1de5299dbba600392ecd9d89c5880d93e"
+        "sha256": "67c54e26d519b46c19231d5c477ab06885c53cd77711453ad87c36f61d2762df"
       },
       "exploded_render": {
-        "bytes": 70076,
+        "bytes": 69414,
         "height": 1000,
-        "nonblank_sample_colours": 16,
+        "nonblank_sample_colours": 13,
         "path": "03-linocut-printmaking/linocut-printmaking-exploded.png",
-        "sha256": "e271bf339bcfd4098104a30097c7aab725c7c7f90b94183f83064f6786dbd1b2",
+        "sha256": "dd28b06fcf43ad97f8301db1cdafeb5adaa3e22f322135b2d8b9f31bf3e93266",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 209,
+        "viewport_foreground_samples": 210,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 122286,
+        "bytes": 121941,
         "cold_reopen": true,
         "path": "03-linocut-printmaking/linocut-printmaking.FCStd",
         "portable_source_scan": {
@@ -749,7 +750,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "cd02be42340ddb46fd8776397ac74078073e8aff06a2bb1668ab451632fd663c"
+        "sha256": "7ffc871d84b456fd020f09b57dc810803abd3c78e3496e4a76dc369f7d94ac3d"
       },
       "id": "theme.linocut-printmaking.v1",
       "layers": {
@@ -857,18 +858,18 @@
         }
       ],
       "render": {
-        "bytes": 63139,
+        "bytes": 59727,
         "height": 1000,
-        "nonblank_sample_colours": 10,
+        "nonblank_sample_colours": 11,
         "path": "03-linocut-printmaking/linocut-printmaking.png",
-        "sha256": "4be85af51f97e924f34c14d9446aa4c6b3d38fb9d743702bbf85564bbe89da9f",
+        "sha256": "d152c7876a7ea242384b5f97981fb8b40cb25742fa5ec0b1f0381755981c22be",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 245,
+        "viewport_foreground_samples": 243,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.243815,
-        "changed_viewport_pixels": 749,
+        "changed_ratio": 0.236654,
+        "changed_viewport_pixels": 727,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -901,7 +902,7 @@
       "description": "Pen holders, nibs, ink, wax, and seal handles.",
       "directory": "04-calligraphy-wax-seal",
       "exploded_fcstd": {
-        "bytes": 59233,
+        "bytes": 56357,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 15.2,
@@ -985,20 +986,20 @@
           "tier_count": 3,
           "visibility_checks": 4
         },
-        "sha256": "df53d032efad59dc811700a9ac685a43ab002c20304c875dd38f95f8a9f1ccd5"
+        "sha256": "4e5a27aa5774d74eda927faa3c79a08db85d558173d476d642474f3211c49052"
       },
       "exploded_render": {
-        "bytes": 60304,
+        "bytes": 59990,
         "height": 1000,
-        "nonblank_sample_colours": 11,
+        "nonblank_sample_colours": 10,
         "path": "04-calligraphy-wax-seal/calligraphy-wax-seal-exploded.png",
-        "sha256": "a2d506b1254e81574d1ff253b6c9979cfaa673e218d700ebf5aac526b345d5d2",
+        "sha256": "67f42046af3f4b7176100f1f1a8404b3bb3ea0d98647c553e0185b365d857977",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
         "viewport_foreground_samples": 201,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 24557,
+        "bytes": 24378,
         "cold_reopen": true,
         "path": "04-calligraphy-wax-seal/calligraphy-wax-seal.FCStd",
         "portable_source_scan": {
@@ -1006,7 +1007,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "e91219a0e3fedc851d209eeddba04f8df8e55f0c9ffd6d69330945ea305ad10b"
+        "sha256": "1500675fb58c195d5b0c757f6d41165c40f265642e3b2580cae46d3f7c755dbb"
       },
       "id": "theme.calligraphy-wax-seal.v1",
       "layers": {
@@ -1070,18 +1071,18 @@
         }
       ],
       "render": {
-        "bytes": 47635,
+        "bytes": 54503,
         "height": 1000,
-        "nonblank_sample_colours": 9,
+        "nonblank_sample_colours": 11,
         "path": "04-calligraphy-wax-seal/calligraphy-wax-seal.png",
-        "sha256": "3987d0faa41d8bfed4f92109a873894aebf38f62f0dbaa06a84214f2b67078aa",
+        "sha256": "ab70e2424d1b1272ddf981060da095da6642de8e42723b091f69d8a62362aa31",
         "view": "native FreeCAD axonometric assembled view",
         "viewport_foreground_samples": 240,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.229492,
-        "changed_viewport_pixels": 705,
+        "changed_ratio": 0.223633,
+        "changed_viewport_pixels": 687,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -1090,14 +1091,15 @@
       "slug": "calligraphy-wax-seal",
       "solid_count": 4,
       "spec": {
-        "bytes": 9860,
+        "bytes": 10076,
         "path": "04-calligraphy-wax-seal/calligraphy-wax-seal.json",
-        "sha256": "b849ac81c91da2aa1459a79ee390f8ab53c202db1ecd7d73a5c60d9d106e3c09"
+        "sha256": "4788c4de78fee882ec07436a26b2e6af474336b92b271d2f0f03d4a80095d594"
       },
       "status": "pass",
       "title": "Calligraphy and Wax Seal Pack",
       "volume_mm3": 2393257.469406,
       "warnings": [
+        "Loose storage divider region 'wax-sticks' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
         "Lower carrier split into 2 bed-sized parts with straight butt seams."
       ]
     },
@@ -1111,7 +1113,7 @@
       "description": "Camera body, lens, blower, film or media, and cleaning tools.",
       "directory": "05-analog-camera-care",
       "exploded_fcstd": {
-        "bytes": 98404,
+        "bytes": 96867,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 16.8,
@@ -1230,20 +1232,20 @@
           "tier_count": 4,
           "visibility_checks": 8
         },
-        "sha256": "0df204750102ed8c4f685920c068dd31a70d7cf7a4fc7a1ae4b48ff02568b692"
+        "sha256": "ce40af01049db536b1cbb94408e0172f52771126b39ca2f34ea2b36bec807063"
       },
       "exploded_render": {
-        "bytes": 60243,
+        "bytes": 60962,
         "height": 1000,
-        "nonblank_sample_colours": 12,
+        "nonblank_sample_colours": 13,
         "path": "05-analog-camera-care/analog-camera-care-exploded.png",
-        "sha256": "de3d7db7b60b3f4de2ba6672970090d5a3c90354adea45dbbb63400bea92b31d",
+        "sha256": "40c1af244172f151118170d9886d02b3c3971817c2938afcddb9fd1da2ef431d",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 207,
+        "viewport_foreground_samples": 208,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 42773,
+        "bytes": 43535,
         "cold_reopen": true,
         "path": "05-analog-camera-care/analog-camera-care.FCStd",
         "portable_source_scan": {
@@ -1251,7 +1253,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "c537e3f7204ef96eb60eb4ecd4dc517e5c27a2582a786a3548fd604c038d399a"
+        "sha256": "ed166e3b690c97ab9ee3083c0a9e334d0aa106e9df486028083e288bd44c2778"
       },
       "id": "theme.analog-camera-care.v1",
       "layers": {
@@ -1360,18 +1362,18 @@
         }
       ],
       "render": {
-        "bytes": 42045,
+        "bytes": 45872,
         "height": 1000,
-        "nonblank_sample_colours": 11,
+        "nonblank_sample_colours": 9,
         "path": "05-analog-camera-care/analog-camera-care.png",
-        "sha256": "94c32be902316a9d91544f790c8db2420a980c7b4ace6c7cc196a3d39ec0a788",
+        "sha256": "9dc1caf803d8fd5069075073dda04ae2133845bd18cf311c6582f1bdbb13e52e",
         "view": "native FreeCAD axonometric assembled view",
         "viewport_foreground_samples": 243,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.330404,
-        "changed_viewport_pixels": 1015,
+        "changed_ratio": 0.326823,
+        "changed_viewport_pixels": 1004,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -1380,15 +1382,17 @@
       "slug": "analog-camera-care",
       "solid_count": 8,
       "spec": {
-        "bytes": 10782,
+        "bytes": 11227,
         "path": "05-analog-camera-care/analog-camera-care.json",
-        "sha256": "1c75bdae089f2708883f98de08304b3fc45b6588a62be58d31c9b6c6df20f2ab"
+        "sha256": "d22c2d975d538be6051712797f5bc418253f3bb1e00eca8aa8d5504ddbde583a"
       },
       "status": "pass",
       "title": "Analog Camera Care Pack",
       "volume_mm3": 3245544.708939,
       "warnings": [
         "Upper carrier includes keyed alignment, support surfaces, and two side lift-access notches.",
+        "Loose storage existing container bay 'camera-body' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage divider region 'cleaning-tools' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
         "Lower carrier split into 2 bed-sized parts with straight butt seams.",
         "Upper carrier split into 2 bed-sized parts with straight butt seams."
       ]
@@ -1403,7 +1407,7 @@
       "description": "Cooled iron, meter, desoldering tool, tips, cable, and consumables.",
       "directory": "06-electronics-soldering",
       "exploded_fcstd": {
-        "bytes": 302062,
+        "bytes": 298571,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 18.4,
@@ -1563,20 +1567,20 @@
           "tier_count": 5,
           "visibility_checks": 13
         },
-        "sha256": "8b5fee579a1648692f69156dcd42b2cfde7c213e59ba4cb92d84f6ae844a65e1"
+        "sha256": "7a4a4ea4dcb279136a5895a27a0a28ccf3f23813550b42a390c47801d303a2f3"
       },
       "exploded_render": {
-        "bytes": 76567,
+        "bytes": 77205,
         "height": 1000,
-        "nonblank_sample_colours": 17,
+        "nonblank_sample_colours": 16,
         "path": "06-electronics-soldering/electronics-soldering-exploded.png",
-        "sha256": "51147c0c606cbd40ae8cbf949df4fb2fdbb5f3bc11ae43d13374dfecb6b488f4",
+        "sha256": "122f23fed1457184cc8c5d3dfe23e9f7a2e176d3b97d440dcaa14ed37100527d",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 237,
+        "viewport_foreground_samples": 239,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 140622,
+        "bytes": 140295,
         "cold_reopen": true,
         "path": "06-electronics-soldering/electronics-soldering.FCStd",
         "portable_source_scan": {
@@ -1584,7 +1588,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "ce9b6a6c83b2ec248142df939c2132bee23cdc33d9f595bd4d77a6f510faaea6"
+        "sha256": "04858db65e2ba1241bcb044f599a230a7b5e89c8a93d1686ffae30136bf1908a"
       },
       "id": "theme.electronics-soldering.v1",
       "layers": {
@@ -1748,18 +1752,18 @@
         }
       ],
       "render": {
-        "bytes": 63547,
+        "bytes": 66523,
         "height": 1000,
-        "nonblank_sample_colours": 15,
+        "nonblank_sample_colours": 16,
         "path": "06-electronics-soldering/electronics-soldering.png",
-        "sha256": "d31a3b6f88db9b722e70d12e603ff428cf698826ce4ea1dc5013ba564fd62920",
+        "sha256": "138eb8a74b3df1019ca3482cfec9f49e7050c5e3e1d1b4196aea1ac0d8ed7e2d",
         "view": "native FreeCAD axonometric assembled view",
         "viewport_foreground_samples": 244,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.299479,
-        "changed_viewport_pixels": 920,
+        "changed_ratio": 0.32194,
+        "changed_viewport_pixels": 989,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -1794,7 +1798,7 @@
       "description": "Breadboard, development boards, sensors, and jumpers.",
       "directory": "07-microcontroller-prototyping",
       "exploded_fcstd": {
-        "bytes": 64965,
+        "bytes": 63733,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 16.8,
@@ -1878,20 +1882,20 @@
           "tier_count": 3,
           "visibility_checks": 4
         },
-        "sha256": "66ddea3127ab610a96744a111a69d0a8ebb47398f0e083cb0ba52bd91a6c6e61"
+        "sha256": "823509a483c48657cb1da98984ab59e58e0a1b07a460213ea0a337c55a58ce24"
       },
       "exploded_render": {
-        "bytes": 53087,
+        "bytes": 51781,
         "height": 1000,
-        "nonblank_sample_colours": 9,
+        "nonblank_sample_colours": 10,
         "path": "07-microcontroller-prototyping/microcontroller-prototyping-exploded.png",
-        "sha256": "f7b69100037ef1488807d23ff8a8c99f4856327c20b66908533dd660eb24037f",
+        "sha256": "8f3f3951b8b07b7487322ccda8516f4e4e1c868120fc2890818fed85cd0d71fc",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 194,
+        "viewport_foreground_samples": 195,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 27554,
+        "bytes": 27377,
         "cold_reopen": true,
         "path": "07-microcontroller-prototyping/microcontroller-prototyping.FCStd",
         "portable_source_scan": {
@@ -1899,7 +1903,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "76bdb7176a4b249a790dc21deaa59849e6ad715a304474f3cc623b491bc25f99"
+        "sha256": "763b3873273b3880cb99dd40d5d8040a18d26385b6b4753b626aecb157bd6da0"
       },
       "id": "theme.microcontroller-prototyping.v1",
       "layers": {
@@ -1963,18 +1967,18 @@
         }
       ],
       "render": {
-        "bytes": 41669,
+        "bytes": 43425,
         "height": 1000,
-        "nonblank_sample_colours": 10,
+        "nonblank_sample_colours": 9,
         "path": "07-microcontroller-prototyping/microcontroller-prototyping.png",
-        "sha256": "0d209768e7bad1304961b2f33e4edecb033c9501e4b6a02f7802881f8ea2f5a3",
+        "sha256": "2a47e8529013833c771b2a98abab02921571e4e9525398a702394f9e0ab64b74",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 243,
+        "viewport_foreground_samples": 240,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.227865,
-        "changed_viewport_pixels": 700,
+        "changed_ratio": 0.219401,
+        "changed_viewport_pixels": 674,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -1983,14 +1987,16 @@
       "slug": "microcontroller-prototyping",
       "solid_count": 4,
       "spec": {
-        "bytes": 9849,
+        "bytes": 10286,
         "path": "07-microcontroller-prototyping/microcontroller-prototyping.json",
-        "sha256": "e7a07a7454f932d78570d4e901956ebcf2da85c5d2d93b2d6164a71ac97c052c"
+        "sha256": "0bda89283c0e8516d3e4665469b400f7e45881b324fd44cd27aa4af4b70a883e"
       },
       "status": "pass",
       "title": "Microcontroller Prototyping Pack",
       "volume_mm3": 3006484.407036,
       "warnings": [
+        "Loose storage existing container bay 'breadboard' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage divider region 'sensors' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
         "Lower carrier split into 2 bed-sized parts with straight butt seams."
       ]
     },
@@ -2004,7 +2010,7 @@
       "description": "Mini pump, levers, tube, patches, and cartridges.",
       "directory": "08-bicycle-puncture-repair",
       "exploded_fcstd": {
-        "bytes": 283086,
+        "bytes": 280122,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 15.2,
@@ -2129,20 +2135,20 @@
           "tier_count": 4,
           "visibility_checks": 9
         },
-        "sha256": "e6832c3ad77daed444bb996e9abf5814ff46eaf8bad905b7bdfb7aef2bdc04a2"
+        "sha256": "5e2ee5dae6394de0057c0f524c1c8c7fa1b7cdd35a14f46bcea049df27072543"
       },
       "exploded_render": {
-        "bytes": 65856,
+        "bytes": 68437,
         "height": 1000,
-        "nonblank_sample_colours": 15,
+        "nonblank_sample_colours": 16,
         "path": "08-bicycle-puncture-repair/bicycle-puncture-repair-exploded.png",
-        "sha256": "26a990a17f0fb060de4cb82685a674abf8482755008861e29f88503f24397eb6",
+        "sha256": "504b8ea7b7228de238900002ce6463291fd1a613d58bb6147d8ce0d44fe3f378",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 227,
+        "viewport_foreground_samples": 222,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 133314,
+        "bytes": 132984,
         "cold_reopen": true,
         "path": "08-bicycle-puncture-repair/bicycle-puncture-repair.FCStd",
         "portable_source_scan": {
@@ -2150,7 +2156,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "e4c52c298b738b2e7a09a3db91210b71264d60a0078cdb3301e0ddce035ca8eb"
+        "sha256": "d590b0d198d6adf21e7f6354255a7cafad7ed5f08a16b05168ef36949878ca31"
       },
       "id": "theme.bicycle-puncture-repair.v1",
       "layers": {
@@ -2270,18 +2276,18 @@
         }
       ],
       "render": {
-        "bytes": 59402,
+        "bytes": 64406,
         "height": 1000,
-        "nonblank_sample_colours": 15,
+        "nonblank_sample_colours": 13,
         "path": "08-bicycle-puncture-repair/bicycle-puncture-repair.png",
-        "sha256": "c9ecaef0effb545ee7dd82b0703a623ec8d2aaaeac34aabe18f54176e37a2545",
+        "sha256": "b88667c7b308f8982f755fc5111afb542d5501f852b6145f137bdfdf7f9b6de1",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 242,
+        "viewport_foreground_samples": 241,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.284505,
-        "changed_viewport_pixels": 874,
+        "changed_ratio": 0.270508,
+        "changed_viewport_pixels": 831,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -2314,7 +2320,7 @@
       "description": "Compact vise, tying tools, threads, and materials.",
       "directory": "09-fly-tying",
       "exploded_fcstd": {
-        "bytes": 103379,
+        "bytes": 98944,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 17.6,
@@ -2422,20 +2428,20 @@
           "tier_count": 3,
           "visibility_checks": 8
         },
-        "sha256": "c35091b5904ec1462636dfea2abd3686a8b0b35669a790f9f2370ce450b8d952"
+        "sha256": "d69da2f5e818f873c17cee1057e1de47f2e13564d61611eae440e41a3a3b29ac"
       },
       "exploded_render": {
-        "bytes": 66068,
+        "bytes": 67927,
         "height": 1000,
-        "nonblank_sample_colours": 12,
+        "nonblank_sample_colours": 13,
         "path": "09-fly-tying/fly-tying-exploded.png",
-        "sha256": "2d476a1d59120c283aa2302314f89b9857e20ffb0db2362cf1c4031cc193c25e",
+        "sha256": "715bf99b5d417f1354536547d7cd8d0da117abdb1f24c0e09a81290a0611aef5",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
         "viewport_foreground_samples": 201,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 43053,
+        "bytes": 43017,
         "cold_reopen": true,
         "path": "09-fly-tying/fly-tying.FCStd",
         "portable_source_scan": {
@@ -2443,7 +2449,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "747083fe30effd80b0ce8586cf45af7ef7c9b7bba8dc13ca5eb4074e604730aa"
+        "sha256": "fccf7f738914233a19169e589abfcbf986d1a1617a4904bb2224cb912ba2b7fa"
       },
       "id": "theme.fly-tying.v1",
       "layers": {
@@ -2551,18 +2557,18 @@
         }
       ],
       "render": {
-        "bytes": 53061,
+        "bytes": 52598,
         "height": 1000,
         "nonblank_sample_colours": 10,
         "path": "09-fly-tying/fly-tying.png",
-        "sha256": "edf433fcd0c0b0721333c56e44fe825f9dbb843c618978289bbbe933f276ae15",
+        "sha256": "ba774abd9545b0fca8b3e1cc551fb56c2f26bc42d8893d2a265d01533f9c4be4",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 243,
+        "viewport_foreground_samples": 244,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.243164,
-        "changed_viewport_pixels": 747,
+        "changed_ratio": 0.252279,
+        "changed_viewport_pixels": 775,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -2571,14 +2577,16 @@
       "slug": "fly-tying",
       "solid_count": 8,
       "spec": {
-        "bytes": 12139,
+        "bytes": 12568,
         "path": "09-fly-tying/fly-tying.json",
-        "sha256": "a23a8170c7b5947db68c82072a67fe701f0ad10159b0800a9015bba8f84d5b34"
+        "sha256": "c68575a0c46c4ad62a24ff4fe06824a527a99753cb732c3f37ba3ac2667ce84e"
       },
       "status": "pass",
       "title": "Fly-Tying Bench Pack",
       "volume_mm3": 3077696.41609,
       "warnings": [
+        "Loose storage existing container bay 'vise' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage divider region 'tools' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
         "Lower carrier split into 2 bed-sized parts with straight butt seams."
       ]
     },
@@ -2592,7 +2600,7 @@
       "description": "Dice sets, miniatures, tokens, and cards.",
       "directory": "10-tabletop-rpg",
       "exploded_fcstd": {
-        "bytes": 115771,
+        "bytes": 111514,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 15.2,
@@ -2712,20 +2720,20 @@
           "tier_count": 3,
           "visibility_checks": 10
         },
-        "sha256": "cc5725460dded2e09f36a0413c69e4b576288cd9643fc6dc9e7b19696c673d28"
+        "sha256": "6a7886b75034120a704a9facfc795032fb4e17bdc1e330ba4189542fea988d6d"
       },
       "exploded_render": {
-        "bytes": 70703,
+        "bytes": 73794,
         "height": 1000,
-        "nonblank_sample_colours": 13,
+        "nonblank_sample_colours": 15,
         "path": "10-tabletop-rpg/tabletop-rpg-exploded.png",
-        "sha256": "3ee6adffd73046ebd479d35489c552813f92ef6f70753ac73adecc665c97c981",
+        "sha256": "add109d576cd2c26386667aaf62b342ebbe8b0ff83c9a6baeb32693d6df1529c",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 196,
+        "viewport_foreground_samples": 192,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 48616,
+        "bytes": 48588,
         "cold_reopen": true,
         "path": "10-tabletop-rpg/tabletop-rpg.FCStd",
         "portable_source_scan": {
@@ -2733,7 +2741,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "6a3618a98d72d2a296287c9580cc11b4853feffb8b21743f2645e42f2723f927"
+        "sha256": "eb623177894b418e02bf1f626ed4f9767a1b044dd8363c83c73d2e28bc71dd09"
       },
       "id": "theme.tabletop-rpg.v1",
       "layers": {
@@ -2863,18 +2871,18 @@
         }
       ],
       "render": {
-        "bytes": 55647,
+        "bytes": 58741,
         "height": 1000,
-        "nonblank_sample_colours": 11,
+        "nonblank_sample_colours": 10,
         "path": "10-tabletop-rpg/tabletop-rpg.png",
-        "sha256": "87529b7f1633aa53858f2e2cbba02daaaabc2ea38de8779c3806a067b16d65f2",
+        "sha256": "03320b6e59a662624e53059aba3d5b79e2b9ba1208829fc1f85064a75d77f698",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 247,
+        "viewport_foreground_samples": 244,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.277995,
-        "changed_viewport_pixels": 854,
+        "changed_ratio": 0.277018,
+        "changed_viewport_pixels": 851,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -2883,14 +2891,16 @@
       "slug": "tabletop-rpg",
       "solid_count": 10,
       "spec": {
-        "bytes": 12843,
+        "bytes": 13274,
         "path": "10-tabletop-rpg/tabletop-rpg.json",
-        "sha256": "5e408ab147e64ea09561439644aa11d262b4859647189d7a47d75a87bef6dd5b"
+        "sha256": "56d26d749fa4d965ccbaff588934e9ce46a535df60d9fa68f921586bc17eba5c"
       },
       "status": "pass",
       "title": "Tabletop RPG Session Pack",
       "volume_mm3": 1946410.676289,
       "warnings": [
+        "Loose storage divider region 'tokens' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage existing container bay 'cards' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
         "Lower carrier split into 2 bed-sized parts with straight butt seams."
       ]
     },
@@ -2904,7 +2914,7 @@
       "description": "Two card decks and six removable component trays.",
       "directory": "11-board-game-tokens",
       "exploded_fcstd": {
-        "bytes": 133725,
+        "bytes": 132177,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 17.6,
@@ -3048,20 +3058,20 @@
           "tier_count": 3,
           "visibility_checks": 14
         },
-        "sha256": "7835449010d42f6ee8ab3985f88dbd58c75136c3f5ea7e3fa16b3e1ff6db9493"
+        "sha256": "228ac127ace92d36a46e3062548433b1cd27cf23df48344dfb443cd68a6d4683"
       },
       "exploded_render": {
-        "bytes": 62770,
+        "bytes": 62771,
         "height": 1000,
-        "nonblank_sample_colours": 13,
+        "nonblank_sample_colours": 12,
         "path": "11-board-game-tokens/board-game-tokens-exploded.png",
-        "sha256": "1b18556e4bd9b88c8b606c886dfdf50978a9a15b7b17d23be81a2fc1e3da41f8",
+        "sha256": "ce385c2e80daf26a9636f15112de6aab733505984b8e2d76de85064c9d96bd9c",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
         "viewport_foreground_samples": 210,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 60202,
+        "bytes": 60127,
         "cold_reopen": true,
         "path": "11-board-game-tokens/board-game-tokens.FCStd",
         "portable_source_scan": {
@@ -3069,7 +3079,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "66f833cfede756aaeed2dcec99206b3f42f1c8b9204a780c6ae3b4822be5f351"
+        "sha256": "3e826ef7a50ad0be426fc12ea99aa583655fe30759e07e4ba5936da832a148e8"
       },
       "id": "theme.board-game-tokens.v1",
       "layers": {
@@ -3241,18 +3251,18 @@
         }
       ],
       "render": {
-        "bytes": 46574,
+        "bytes": 45556,
         "height": 1000,
         "nonblank_sample_colours": 11,
         "path": "11-board-game-tokens/board-game-tokens.png",
-        "sha256": "a3b61b3cb68da9ecf42323b589616edd18ff75ae4e429ebd531909e13f33bd68",
+        "sha256": "5a6bcfdbe0ae4a8f1e39fe7254daf70592f04642d3f6c9adfbc5e62f7536248c",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 243,
+        "viewport_foreground_samples": 245,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.244141,
-        "changed_viewport_pixels": 750,
+        "changed_ratio": 0.239258,
+        "changed_viewport_pixels": 735,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -3261,14 +3271,16 @@
       "slug": "board-game-tokens",
       "solid_count": 14,
       "spec": {
-        "bytes": 11444,
+        "bytes": 11886,
         "path": "11-board-game-tokens/board-game-tokens.json",
-        "sha256": "0d1fc14b07c02d7eb53ae007679b9b3c82b9f01b682b33ef4f2308a088a1deb8"
+        "sha256": "b5f63450ee47abd00b70e43af95507d1c36de3d9fd204e74fe216ecdfbd103da"
       },
       "status": "pass",
       "title": "Board-Game Token Library",
       "volume_mm3": 2909103.829254,
       "warnings": [
+        "Loose storage existing container bay 'cards-a' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage existing container bay 'cards-b' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
         "Lower carrier split into 2 bed-sized parts with straight butt seams."
       ]
     },
@@ -3282,7 +3294,7 @@
       "description": "Beads, findings, hand tools, and a small work mat.",
       "directory": "12-bead-jewellery",
       "exploded_fcstd": {
-        "bytes": 169736,
+        "bytes": 164784,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 16.0,
@@ -3450,20 +3462,20 @@
           "tier_count": 3,
           "visibility_checks": 18
         },
-        "sha256": "60f7cde944589495413d59d389a65a68f159c2df8bb4ac8065f76243ca125417"
+        "sha256": "557ee54700cdf24ef4d67d919b28b2f87b993df9c5147cdb83c6ac30d49b64b4"
       },
       "exploded_render": {
-        "bytes": 64994,
+        "bytes": 70361,
         "height": 1000,
-        "nonblank_sample_colours": 15,
+        "nonblank_sample_colours": 16,
         "path": "12-bead-jewellery/bead-jewellery-exploded.png",
-        "sha256": "c52e74f1500e7c3ebd44e53689a2eb05301ab42482b6e0695f2b04b850c69ac1",
+        "sha256": "f7f946636cf0785e85bde023d3a58517d61f6141fd16cd7f6d8190c976c6a8a2",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 197,
+        "viewport_foreground_samples": 192,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 75039,
+        "bytes": 74934,
         "cold_reopen": true,
         "path": "12-bead-jewellery/bead-jewellery.FCStd",
         "portable_source_scan": {
@@ -3471,7 +3483,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "326cdb2381ae92e53c080eb136d5365c1a55e063aaa04dd0b9acb8ce7686b847"
+        "sha256": "7ad69a3ebd7fede43ea1e116672d128f057e2c56ab003b27ce4f8ee153116136"
       },
       "id": "theme.bead-jewellery.v1",
       "layers": {
@@ -3688,18 +3700,18 @@
         }
       ],
       "render": {
-        "bytes": 48129,
+        "bytes": 50339,
         "height": 1000,
         "nonblank_sample_colours": 12,
         "path": "12-bead-jewellery/bead-jewellery.png",
-        "sha256": "d3af95571c3e174c10d7bf4f65e9786039236076e6ef372bb17b8ea45fce17d0",
+        "sha256": "8194a515c3bf6abde51ee9ee032ddd94c4d705023d4b7ddcb14f186a8719e9a7",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 244,
+        "viewport_foreground_samples": 243,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.290039,
-        "changed_viewport_pixels": 891,
+        "changed_ratio": 0.29069,
+        "changed_viewport_pixels": 893,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -3708,14 +3720,15 @@
       "slug": "bead-jewellery",
       "solid_count": 18,
       "spec": {
-        "bytes": 12997,
+        "bytes": 13219,
         "path": "12-bead-jewellery/bead-jewellery.json",
-        "sha256": "3bc3bbb2102f4b004369c28acbf27e28d0d2ced316c800edfe8bcb807b73241e"
+        "sha256": "12437918daa86c9fb823f56d93ca3c6157ca9bd0acf5eabbc2fc0286bb49ce06"
       },
       "status": "pass",
       "title": "Bead and Jewellery Work Pack",
       "volume_mm3": 2531766.042922,
       "warnings": [
+        "Loose storage existing container bay 'bead-mat' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
         "Lower carrier split into 2 bed-sized parts with straight butt seams."
       ]
     },
@@ -3729,7 +3742,7 @@
       "description": "Watch cushion, spare straps, drivers, and spring bars.",
       "directory": "13-watch-strap-service",
       "exploded_fcstd": {
-        "bytes": 218844,
+        "bytes": 213936,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 14.0,
@@ -3830,20 +3843,20 @@
           "tier_count": 4,
           "visibility_checks": 5
         },
-        "sha256": "b5489c585af6dc72bc54f6fa552c1ec68964660381d4445d5d6abc42c6aa0440"
+        "sha256": "e87eb1ba96af13762ac14f1b3b8f8d66315c0d0086539fba467792e15488fb0c"
       },
       "exploded_render": {
-        "bytes": 64321,
+        "bytes": 68666,
         "height": 1000,
-        "nonblank_sample_colours": 13,
+        "nonblank_sample_colours": 12,
         "path": "13-watch-strap-service/watch-strap-service-exploded.png",
-        "sha256": "da9d36e3b121528caf7da627170bde637ff01f6dfb77077aeb49c798d62bb9dc",
+        "sha256": "be9f77ab7327f8bc56281dac8c0d30853970c3d97645a3471a9605c9c0dfa596",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 223,
+        "viewport_foreground_samples": 218,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 100791,
+        "bytes": 100450,
         "cold_reopen": true,
         "path": "13-watch-strap-service/watch-strap-service.FCStd",
         "portable_source_scan": {
@@ -3851,7 +3864,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "ee77c2b563537ed4397e370af29da2899ddd1a65e08870eae79dc5b297e42dc6"
+        "sha256": "d9582ff75c8b69d85b63ac9bbcce0b9f8d89dff1445bb91a2127cf8a361d659c"
       },
       "id": "theme.watch-strap-service.v1",
       "layers": {
@@ -3926,18 +3939,18 @@
         }
       ],
       "render": {
-        "bytes": 55655,
+        "bytes": 59016,
         "height": 1000,
-        "nonblank_sample_colours": 10,
+        "nonblank_sample_colours": 13,
         "path": "13-watch-strap-service/watch-strap-service.png",
-        "sha256": "8cbd920212ab1b21c8d942140521de3600a4fb6e2c0f4837d0a1124105e090aa",
+        "sha256": "31b608543ef1068b14edb4f2a78deddd31fdc7f109f7938bd7bc53bd8f150efc",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 242,
+        "viewport_foreground_samples": 240,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.341797,
-        "changed_viewport_pixels": 1050,
+        "changed_ratio": 0.333984,
+        "changed_viewport_pixels": 1026,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -3968,7 +3981,7 @@
       "description": "Paints, brushes, miniatures, palette, and rinse cup.",
       "directory": "14-miniature-painting",
       "exploded_fcstd": {
-        "bytes": 338180,
+        "bytes": 334308,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 17.6,
@@ -4099,20 +4112,20 @@
           "tier_count": 4,
           "visibility_checks": 10
         },
-        "sha256": "1d06113f373b87a2b86a84756309c52d40802200641ee21d45fb3c051965a04d"
+        "sha256": "03742bb9d3d54043d14d46ca0236408e9c2e65f03ed278e95b1e0180da49bd58"
       },
       "exploded_render": {
-        "bytes": 77650,
+        "bytes": 69238,
         "height": 1000,
-        "nonblank_sample_colours": 15,
+        "nonblank_sample_colours": 17,
         "path": "14-miniature-painting/miniature-painting-exploded.png",
-        "sha256": "65c5f186bed10ee6615393904e2025ea43e46c894183e862241c1490615cdf1e",
+        "sha256": "d70e77fb03d5d754d01cb33719c6b3cf8d0fe4c693f8f4dba40e2e8a01914610",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 227,
+        "viewport_foreground_samples": 218,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 160497,
+        "bytes": 160176,
         "cold_reopen": true,
         "path": "14-miniature-painting/miniature-painting.FCStd",
         "portable_source_scan": {
@@ -4120,7 +4133,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "7c65548d0606a7a43eaa7c00e0942296ac82a73eda42dcd4b0236a6390ef9b24"
+        "sha256": "91700d15625adc668dff7378a13166175505f6024a90d2906ed60c2bca309f1e"
       },
       "id": "theme.miniature-painting.v1",
       "layers": {
@@ -4249,18 +4262,18 @@
         }
       ],
       "render": {
-        "bytes": 63786,
+        "bytes": 64447,
         "height": 1000,
-        "nonblank_sample_colours": 14,
+        "nonblank_sample_colours": 17,
         "path": "14-miniature-painting/miniature-painting.png",
-        "sha256": "477b99362a3f8f62b6d5c114c165b3edc7b69e8524ed3508fd079655f6bc049d",
+        "sha256": "ef40814d1df4d6c45f272d9e7833cc45703c44c04d863d1d1b64448bab6b045a",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 248,
+        "viewport_foreground_samples": 201,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.290039,
-        "changed_viewport_pixels": 891,
+        "changed_ratio": 0.19043,
+        "changed_viewport_pixels": 585,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -4295,7 +4308,7 @@
       "description": "Packaged dressings, wraps, tape, gloves, and a cold pack.",
       "directory": "15-household-first-aid",
       "exploded_fcstd": {
-        "bytes": 118854,
+        "bytes": 115906,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 18.4,
@@ -4426,20 +4439,20 @@
           "tier_count": 4,
           "visibility_checks": 10
         },
-        "sha256": "e244a1266288c7fefc2baa008e98948ec07e975f6b79e435936f2da8f641ab20"
+        "sha256": "c50f285ce6676606ef3d5e328d8f0b6815736bbe5cf564719c2da43727141eaf"
       },
       "exploded_render": {
-        "bytes": 61836,
+        "bytes": 54230,
         "height": 1000,
-        "nonblank_sample_colours": 10,
+        "nonblank_sample_colours": 13,
         "path": "15-household-first-aid/household-first-aid-exploded.png",
-        "sha256": "b3cadb4cf9bd9abd4befd0de6b80f8a5a4883a4a28652da3d9083f4782db34fb",
+        "sha256": "7ae6f4f53968195d446a88c87d8494a9445d0f5878aff22fcc4cd7d0fd99dee2",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 213,
+        "viewport_foreground_samples": 199,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 52374,
+        "bytes": 52382,
         "cold_reopen": true,
         "path": "15-household-first-aid/household-first-aid.FCStd",
         "portable_source_scan": {
@@ -4447,7 +4460,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "3b59e24e54a5ddee9ae5bc63b666fdaa424b2135d6f5996cb53d00611655e8d1"
+        "sha256": "92f3dc76848d1eb6cb26a65ada2853b42870e7faffd6e05f326e434f92e55e8c"
       },
       "id": "theme.household-first-aid.v1",
       "layers": {
@@ -4576,18 +4589,18 @@
         }
       ],
       "render": {
-        "bytes": 43002,
+        "bytes": 45845,
         "height": 1000,
-        "nonblank_sample_colours": 13,
+        "nonblank_sample_colours": 12,
         "path": "15-household-first-aid/household-first-aid.png",
-        "sha256": "6b00d7de0c1477ef9613a259f1aa31188b636e2175afe980a4ee51a035e46c4b",
+        "sha256": "f6a2539eeecdab97806f18d8d9ddbd5242f52b8e315dab16de383cb9c4bddb9b",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 245,
+        "viewport_foreground_samples": 201,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.348958,
-        "changed_viewport_pixels": 1072,
+        "changed_ratio": 0.238281,
+        "changed_viewport_pixels": 732,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -4596,15 +4609,20 @@
       "slug": "household-first-aid",
       "solid_count": 10,
       "spec": {
-        "bytes": 11581,
+        "bytes": 12684,
         "path": "15-household-first-aid/household-first-aid.json",
-        "sha256": "db75550ce32b885b21254c2e8c11f8b865bb78dc3517b7cc3e86c7566f3991c7"
+        "sha256": "4de12f231082d6ccb52b80df53c45af24f93997d1a7238fcd1c5e43e1f12c079"
       },
       "status": "pass",
       "title": "Household First-Aid Organizer",
       "volume_mm3": 3982004.447096,
       "warnings": [
         "Upper carrier includes keyed alignment, support surfaces, and two side lift-access notches.",
+        "Loose storage existing container bay 'bandage-pack' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage existing container bay 'wraps' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage existing container bay 'cold-pack' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage divider region 'dressings' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage existing container bay 'gloves' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
         "Lower carrier split into 2 bed-sized parts with straight butt seams.",
         "Upper carrier split into 2 bed-sized parts with straight butt seams."
       ]
@@ -4619,7 +4637,7 @@
       "description": "Hand grinder, brewer, scale, cup, coffee, and filters.",
       "directory": "16-travel-coffee",
       "exploded_fcstd": {
-        "bytes": 259787,
+        "bytes": 257246,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 18.4,
@@ -4767,20 +4785,20 @@
           "tier_count": 5,
           "visibility_checks": 11
         },
-        "sha256": "6687557aa24534f0025b0e0585bb9336d4517c37533998e9b7999e221662ca4c"
+        "sha256": "1296941aee1188505dc244b72301bcc7eaebd3c77b941db1d8cec5e438fa3490"
       },
       "exploded_render": {
-        "bytes": 68413,
+        "bytes": 59643,
         "height": 1000,
-        "nonblank_sample_colours": 14,
+        "nonblank_sample_colours": 15,
         "path": "16-travel-coffee/travel-coffee-exploded.png",
-        "sha256": "756770afa3f374eee0e5db9faf04e58511505b54e012f5e275aebef1a7d5a00e",
+        "sha256": "07289037f4e2309b1f275b9fdc8150805976d4b8844820b5a55163f17eb2f11c",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 238,
+        "viewport_foreground_samples": 228,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 122419,
+        "bytes": 122083,
         "cold_reopen": true,
         "path": "16-travel-coffee/travel-coffee.FCStd",
         "portable_source_scan": {
@@ -4788,7 +4806,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "efe8730df92635dec07ba82ac6dfabd683c99dd17ccae8b8104c9178eef70698"
+        "sha256": "9b78a2122c9e5cdb659593840da7c2856fe874323c99aa59c145aae0b9ab9bc4"
       },
       "id": "theme.travel-coffee.v1",
       "layers": {
@@ -4930,18 +4948,18 @@
         }
       ],
       "render": {
-        "bytes": 60834,
+        "bytes": 54261,
         "height": 1000,
         "nonblank_sample_colours": 13,
         "path": "16-travel-coffee/travel-coffee.png",
-        "sha256": "07272b418f3a5f48389c3a6d3f1e8454126364562a5c83906f82c48fb7e1d822",
+        "sha256": "02e39fff9e5500720545149ab2742f86ae5426e777ccb0bc14833d64f58e8ab8",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 243,
+        "viewport_foreground_samples": 205,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.33138,
-        "changed_viewport_pixels": 1018,
+        "changed_ratio": 0.223633,
+        "changed_viewport_pixels": 687,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -4976,7 +4994,7 @@
       "description": "Empty shaker, mixing glass, jigger, spoon, strainer, and dry garnishes.",
       "directory": "17-dry-bar-tools",
       "exploded_fcstd": {
-        "bytes": 99253,
+        "bytes": 96063,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 18.4,
@@ -5095,20 +5113,20 @@
           "tier_count": 4,
           "visibility_checks": 8
         },
-        "sha256": "9832a6b24e1a557c4dafeae834d365b9ab2c1fef6e2361fe4947d3b32d7fb19b"
+        "sha256": "109c8da5b4283871648d1c287d113f9f3917464ae15eba5db29dad5904feab5a"
       },
       "exploded_render": {
-        "bytes": 57756,
+        "bytes": 50163,
         "height": 1000,
-        "nonblank_sample_colours": 10,
+        "nonblank_sample_colours": 12,
         "path": "17-dry-bar-tools/dry-bar-tools-exploded.png",
-        "sha256": "5b4b8e8b1a10659fab5a174d28e7e9b2114fba1c7cb5ba06eab1b27996af44f9",
+        "sha256": "d4e890f9a7f02475f9492d8dccb1d11323b702a452c2766d9ae9fbcee8bb7fce",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 207,
+        "viewport_foreground_samples": 196,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 43219,
+        "bytes": 43232,
         "cold_reopen": true,
         "path": "17-dry-bar-tools/dry-bar-tools.FCStd",
         "portable_source_scan": {
@@ -5116,7 +5134,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "39ec6e863f4dbd28bfa2a2f6d0054263a1cbca15273680d6ce511b714e0ae643"
+        "sha256": "039bd553445a85a856c15884e5cf275e65f6a55d38285aa4247ac0bc154e49d4"
       },
       "id": "theme.dry-bar-tools.v1",
       "layers": {
@@ -5225,18 +5243,18 @@
         }
       ],
       "render": {
-        "bytes": 42185,
+        "bytes": 42695,
         "height": 1000,
         "nonblank_sample_colours": 10,
         "path": "17-dry-bar-tools/dry-bar-tools.png",
-        "sha256": "40583ce912b502d19214fea284a6b6a9f6c30d2f9df02769e09c8ced55161f51",
+        "sha256": "71c2cac851103153e63241336ad3d9db2c8f0a6abc09b226fcacf604b00d1bc3",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 241,
+        "viewport_foreground_samples": 197,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.340495,
-        "changed_viewport_pixels": 1046,
+        "changed_ratio": 0.233724,
+        "changed_viewport_pixels": 718,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -5245,15 +5263,17 @@
       "slug": "dry-bar-tools",
       "solid_count": 8,
       "spec": {
-        "bytes": 12294,
+        "bytes": 12727,
         "path": "17-dry-bar-tools/dry-bar-tools.json",
-        "sha256": "68017bbdeec25f9e4290f080a3eea88b0927de575b44447c74e20ecc80a4dd08"
+        "sha256": "95f550b353cc48283bcc9c8bf3fdc9a3d5b515a49f6b9f2b7900fcbe9e4b1762"
       },
       "status": "pass",
       "title": "Dry Bar Tools Pack",
       "volume_mm3": 4603327.968281,
       "warnings": [
         "Upper carrier includes keyed alignment, support surfaces, and two side lift-access notches.",
+        "Loose storage divider region 'picks' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage existing container bay 'coasters' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
         "Lower carrier split into 2 bed-sized parts with straight butt seams.",
         "Upper carrier split into 2 bed-sized parts with straight butt seams."
       ]
@@ -5268,7 +5288,7 @@
       "description": "Propellers, drivers, fasteners, and protected battery containers.",
       "directory": "18-drone-field-repair",
       "exploded_fcstd": {
-        "bytes": 59928,
+        "bytes": 59292,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 17.6,
@@ -5352,20 +5372,20 @@
           "tier_count": 3,
           "visibility_checks": 4
         },
-        "sha256": "2a9c5b0c3b7590ccc099d57ea62cf22c078313fdd2dc1fc9ec57b904138703a9"
+        "sha256": "e0b812d32fe84ba3961ac8c7c3fdc2520c79dabd1b6a848a76b7643e7d7e3623"
       },
       "exploded_render": {
-        "bytes": 51575,
+        "bytes": 45590,
         "height": 1000,
-        "nonblank_sample_colours": 10,
+        "nonblank_sample_colours": 11,
         "path": "18-drone-field-repair/drone-field-repair-exploded.png",
-        "sha256": "c85add8ac5109b774982b4aa65730b636b9098b72fe4cdd53f0905847819b9ea",
+        "sha256": "9d2f92af7a6897cb882baba3b3e66fbb711a77b15e1e7257b1116b3e498566b6",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 189,
+        "viewport_foreground_samples": 174,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 25953,
+        "bytes": 25795,
         "cold_reopen": true,
         "path": "18-drone-field-repair/drone-field-repair.FCStd",
         "portable_source_scan": {
@@ -5373,7 +5393,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "ca26627013cce34057d67ab52b3a3df9c915a1393cc5ce2f733d8d4e182070dd"
+        "sha256": "6ee5791203967d6d794c2457a409cb6fae90dec484bd3faf703c34841c777009"
       },
       "id": "theme.drone-field-repair.v1",
       "layers": {
@@ -5437,18 +5457,18 @@
         }
       ],
       "render": {
-        "bytes": 43846,
+        "bytes": 42906,
         "height": 1000,
-        "nonblank_sample_colours": 8,
+        "nonblank_sample_colours": 9,
         "path": "18-drone-field-repair/drone-field-repair.png",
-        "sha256": "0ade8ad4b319214cf96f8ab15f5082682c81fcd9a7614c49f563dce09979a129",
+        "sha256": "f1d79958cd170d44e1aa0f34a399687c4255dfeff13bb3583ba1b73a46adacc8",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 241,
+        "viewport_foreground_samples": 190,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.225911,
-        "changed_viewport_pixels": 694,
+        "changed_ratio": 0.137044,
+        "changed_viewport_pixels": 421,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -5457,14 +5477,17 @@
       "slug": "drone-field-repair",
       "solid_count": 4,
       "spec": {
-        "bytes": 11236,
+        "bytes": 11909,
         "path": "18-drone-field-repair/drone-field-repair.json",
-        "sha256": "3038a64e09a640c4a52f520be1841cbf26a7966ab40bf48d32e38d70a68dc08c"
+        "sha256": "c73faa1b295875dca69e5f115fabce7fb173570382a2afcff353d0b5562076a0"
       },
       "status": "pass",
       "title": "Drone Field Repair Pack",
       "volume_mm3": 3426000.425736,
       "warnings": [
+        "Loose storage divider region 'drivers' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage existing container bay 'protected-pack-a' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage existing container bay 'protected-pack-b' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
         "Lower carrier split into 2 bed-sized parts with straight butt seams."
       ]
     },
@@ -5478,7 +5501,7 @@
       "description": "Cameras, battery carrier, mounts, cable, and grip.",
       "directory": "19-action-camera-creator",
       "exploded_fcstd": {
-        "bytes": 83410,
+        "bytes": 80492,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 16.0,
@@ -5574,20 +5597,20 @@
           "tier_count": 3,
           "visibility_checks": 6
         },
-        "sha256": "1c9db2f9153f1d92783eae48a68e5ad32f4043690114d2ddfbb42848ebe5f62a"
+        "sha256": "6d1e8887bf54705e47e2b85568575cbe6c9cceea824c20153d0e01ae368f68d7"
       },
       "exploded_render": {
-        "bytes": 57776,
+        "bytes": 49640,
         "height": 1000,
-        "nonblank_sample_colours": 10,
+        "nonblank_sample_colours": 14,
         "path": "19-action-camera-creator/action-camera-creator-exploded.png",
-        "sha256": "271f3a3855e97587aace3381c65adc96e813035c9ac8c5bc886cb09c0db11443",
+        "sha256": "c7ce1747f2364b86c81e19e99cdb9bfc85b0052db0ec8ce8a482ca07301494a2",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 195,
+        "viewport_foreground_samples": 182,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 35221,
+        "bytes": 35059,
         "cold_reopen": true,
         "path": "19-action-camera-creator/action-camera-creator.FCStd",
         "portable_source_scan": {
@@ -5595,7 +5618,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "ebb57c597f251e67744abf627602ed247727934715d7ff8ea36094218d2079a1"
+        "sha256": "3bb578653fdc9a23752ad2fca41e288580502d2e0d4ff3a9167706f91b2a855a"
       },
       "id": "theme.action-camera-creator.v1",
       "layers": {
@@ -5681,18 +5704,18 @@
         }
       ],
       "render": {
-        "bytes": 47146,
+        "bytes": 45130,
         "height": 1000,
         "nonblank_sample_colours": 9,
         "path": "19-action-camera-creator/action-camera-creator.png",
-        "sha256": "6b133bfb626177a1db1276f07f9d41d1a9e6f87ab3b80fa029507f4fdf439884",
+        "sha256": "f31f21acf11ab2cafd6bccb475cf07104b92cb38c94fe6f6434dfdba3eb81838",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 243,
+        "viewport_foreground_samples": 193,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.253255,
-        "changed_viewport_pixels": 778,
+        "changed_ratio": 0.161133,
+        "changed_viewport_pixels": 495,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -5701,14 +5724,17 @@
       "slug": "action-camera-creator",
       "solid_count": 6,
       "spec": {
-        "bytes": 9820,
+        "bytes": 10476,
         "path": "19-action-camera-creator/action-camera-creator.json",
-        "sha256": "b5b71610d941744422d031b7cc2059da66346600f98a924f11ff72b9c65c6285"
+        "sha256": "7566ae2ae4b61d253fa8c60db7fe758bba9fb188dd22ccbccf8eac0656afb585"
       },
       "status": "pass",
       "title": "Action Camera Creator Pack",
       "volume_mm3": 2519134.26322,
       "warnings": [
+        "Loose storage existing container bay 'camera-a' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage existing container bay 'camera-b' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage divider region 'mounts' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
         "Lower carrier split into 2 bed-sized parts with straight butt seams."
       ]
     },
@@ -5722,7 +5748,7 @@
       "description": "Rock hammer, chisel, loupe, gauge, sample bins, and labels.",
       "directory": "20-field-geology",
       "exploded_fcstd": {
-        "bytes": 287729,
+        "bytes": 282706,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 19.2,
@@ -5888,20 +5914,20 @@
           "tier_count": 5,
           "visibility_checks": 14
         },
-        "sha256": "6057a3f0b98203630905002e2694a32f90c12cc0a91c5a8e83e6ec8c117dc51d"
+        "sha256": "0e30200b7b3502cd76867187eb88a14339fc401f970215c2f6e0a85436f200fe"
       },
       "exploded_render": {
-        "bytes": 71272,
+        "bytes": 62904,
         "height": 1000,
-        "nonblank_sample_colours": 15,
+        "nonblank_sample_colours": 17,
         "path": "20-field-geology/field-geology-exploded.png",
-        "sha256": "e54641033e0e57f19f7a1019214f65afcc0ce3bb1e2f8fd894c64fefc430ea41",
+        "sha256": "ca57035e4bd812551be214ac9d2f5e59eda693b25b1aa6517af6f19573c7f1cb",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 239,
+        "viewport_foreground_samples": 229,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 133733,
+        "bytes": 133398,
         "cold_reopen": true,
         "path": "20-field-geology/field-geology.FCStd",
         "portable_source_scan": {
@@ -5909,7 +5935,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "00c740020c18ad3f5395c43a0f7d64332bf566e95b02d50f6ac0840d22f60cfa"
+        "sha256": "69a1e0cbec69b1cb8165707e8f2e6e9bb2d7f45f73cd712b5bf79b04a89e9810"
       },
       "id": "theme.field-geology.v1",
       "layers": {
@@ -6084,18 +6110,18 @@
         }
       ],
       "render": {
-        "bytes": 56678,
+        "bytes": 58965,
         "height": 1000,
-        "nonblank_sample_colours": 14,
+        "nonblank_sample_colours": 19,
         "path": "20-field-geology/field-geology.png",
-        "sha256": "72ce71cc79fbc859534be8afbe85d4f3f01398e9c9dbf8c46c79a27dcdf97154",
+        "sha256": "8e2600c1f0d0f279e5fa90f1ff48a0ae2815c667a8ec36444c9c216efff19d31",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 245,
+        "viewport_foreground_samples": 206,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.30306,
-        "changed_viewport_pixels": 931,
+        "changed_ratio": 0.240234,
+        "changed_viewport_pixels": 738,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -6130,7 +6156,7 @@
       "description": "Three sleeved-deck bays with lidded tokens, dice, spares, and play aids.",
       "directory": "21-tcg-deck-holder",
       "exploded_fcstd": {
-        "bytes": 114056,
+        "bytes": 111916,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 17.6,
@@ -6261,20 +6287,20 @@
           "tier_count": 4,
           "visibility_checks": 10
         },
-        "sha256": "f1c84f8fa8ef0c3f233a69374a4f9b2a66933812062342c27fbff0fd340c19ba"
+        "sha256": "3169189b87348303d6eb94e703d7d3e94cc9335b01f3f9b1f1c7ba17be7cdad8"
       },
       "exploded_render": {
-        "bytes": 62541,
+        "bytes": 53079,
         "height": 1000,
-        "nonblank_sample_colours": 10,
+        "nonblank_sample_colours": 13,
         "path": "21-tcg-deck-holder/tcg-deck-holder-exploded.png",
-        "sha256": "a33b81f1d6ecef54ef930b12d42c28ff7b93f6ee1bff7da2c176d0ff651cc560",
+        "sha256": "bfc29574e79c5f5ddf70819e8f8f2d75c2186152e6186a61adeab953ba72c351",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 211,
+        "viewport_foreground_samples": 204,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 50390,
+        "bytes": 50404,
         "cold_reopen": true,
         "path": "21-tcg-deck-holder/tcg-deck-holder.FCStd",
         "portable_source_scan": {
@@ -6282,7 +6308,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "71cbae5b0eedeb45ac2b1edb45150e5880400176352fae2a37b1a24945381d5c"
+        "sha256": "2d2c62a2ea1b920476271bbf27efed5bc5593e504d1c84d8c4945c09dabe2fc2"
       },
       "id": "theme.tcg-deck-holder.v1",
       "layers": {
@@ -6411,18 +6437,18 @@
         }
       ],
       "render": {
-        "bytes": 45979,
+        "bytes": 44721,
         "height": 1000,
-        "nonblank_sample_colours": 9,
+        "nonblank_sample_colours": 13,
         "path": "21-tcg-deck-holder/tcg-deck-holder.png",
-        "sha256": "27ae85f372f46e94634bd3805999e557cc106291902e9b3b2f38ae3668a43d99",
+        "sha256": "a1be0074d1b36affbd9c6b9df65dfca108940ea1687991c3763f62c4cdd9d20c",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 244,
+        "viewport_foreground_samples": 205,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.339844,
-        "changed_viewport_pixels": 1044,
+        "changed_ratio": 0.235352,
+        "changed_viewport_pixels": 723,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -6431,15 +6457,20 @@
       "slug": "tcg-deck-holder",
       "solid_count": 10,
       "spec": {
-        "bytes": 11578,
+        "bytes": 12676,
         "path": "21-tcg-deck-holder/tcg-deck-holder.json",
-        "sha256": "8048e52360d25dbab67d4f4f325e53e608c68b578959e979cfde3c06be59fbfb"
+        "sha256": "032b5d67ab9e2f3c1b818411fb307792ea30e1d0e74ef6057fda83e15837b3d7"
       },
       "status": "pass",
       "title": "TCG Deck Holder Insert",
       "volume_mm3": 3569776.763534,
       "warnings": [
         "Upper carrier includes keyed alignment, support surfaces, and two side lift-access notches.",
+        "Loose storage existing container bay 'deck-a' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage existing container bay 'deck-b' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage existing container bay 'deck-c' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage divider region 'sideboard' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage existing container bay 'play-aids' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
         "Lower carrier split into 2 bed-sized parts with straight butt seams.",
         "Upper carrier split into 2 bed-sized parts with straight butt seams."
       ]
@@ -6454,7 +6485,7 @@
       "description": "Generic enclosed radio node, protected power module, antennas, cables, and field spares.",
       "directory": "22-portable-mesh-radio-node",
       "exploded_fcstd": {
-        "bytes": 119274,
+        "bytes": 116474,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 16.0,
@@ -6585,20 +6616,20 @@
           "tier_count": 4,
           "visibility_checks": 10
         },
-        "sha256": "d30261252c15ca99997c35747b91218fb61518d79327b56911c877e0ae5ffd68"
+        "sha256": "44efac16f93fe08c36b8d88cb8992ed436aca122888322522cf22523db3bd254"
       },
       "exploded_render": {
-        "bytes": 63378,
+        "bytes": 56341,
         "height": 1000,
-        "nonblank_sample_colours": 10,
+        "nonblank_sample_colours": 12,
         "path": "22-portable-mesh-radio-node/portable-mesh-radio-node-exploded.png",
-        "sha256": "49284af1f57f92e56d73221f823f4315e779a2bf6a42089c056dac083e77454d",
+        "sha256": "5891a253725694f38c372c6b62c5cbc68c51b0fd5bec995d68a134889fdc7b1b",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 214,
+        "viewport_foreground_samples": 204,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 52347,
+        "bytes": 52334,
         "cold_reopen": true,
         "path": "22-portable-mesh-radio-node/portable-mesh-radio-node.FCStd",
         "portable_source_scan": {
@@ -6606,7 +6637,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "ae3a660689609871225fef651faa14b9938d4911c09caf0c5ada65d9cd7009f6"
+        "sha256": "74a8fa5694f8ff0512dfb056b931a046e6f17c73a28492e0304c124d64ce71c2"
       },
       "id": "theme.portable-mesh-radio-node.v1",
       "layers": {
@@ -6736,18 +6767,18 @@
         }
       ],
       "render": {
-        "bytes": 47251,
+        "bytes": 48168,
         "height": 1000,
-        "nonblank_sample_colours": 12,
+        "nonblank_sample_colours": 11,
         "path": "22-portable-mesh-radio-node/portable-mesh-radio-node.png",
-        "sha256": "9a8b1c365831bc49ee7ee4a33412ceba01580b5b4fcd7d49f6c2dd8e73bac3d5",
+        "sha256": "b0c5d21e348ba6018a205566bcd5a167dc9998ec920a7c55b42c385f793e07bb",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 246,
+        "viewport_foreground_samples": 205,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.337891,
-        "changed_viewport_pixels": 1038,
+        "changed_ratio": 0.235352,
+        "changed_viewport_pixels": 723,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -6756,15 +6787,19 @@
       "slug": "portable-mesh-radio-node",
       "solid_count": 10,
       "spec": {
-        "bytes": 12462,
+        "bytes": 13353,
         "path": "22-portable-mesh-radio-node/portable-mesh-radio-node.json",
-        "sha256": "1cf4d5c4d49df804ec2889c1408a24afd87f97c4d4084dc5c8a51f2442fcc540"
+        "sha256": "be22b17d09e41fc3fbcfce7bfdbd7cdc92e44dae26d9f3bea3514399886e1f05"
       },
       "status": "pass",
       "title": "Portable Mesh-Radio Node Insert",
       "volume_mm3": 2826721.267693,
       "warnings": [
         "Upper carrier includes keyed alignment, support surfaces, and two side lift-access notches.",
+        "Loose storage existing container bay 'node' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage existing container bay 'protected-power' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage divider region 'field-spares' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+        "Loose storage existing container bay 'instructions' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
         "Lower carrier split into 2 bed-sized parts with straight butt seams.",
         "Upper carrier split into 2 bed-sized parts with straight butt seams."
       ]
@@ -6779,7 +6814,7 @@
       "description": "Six deep circular pockets for sealed beverage cans plus a bottle-opener bay.",
       "directory": "23-six-pack-beer",
       "exploded_fcstd": {
-        "bytes": 327365,
+        "bytes": 319623,
         "cold_reopen": true,
         "layout": {
           "gap_mm": 18.8,
@@ -6887,20 +6922,20 @@
           "tier_count": 3,
           "visibility_checks": 8
         },
-        "sha256": "17bd9c88e9beaa3ae30057bd1c0b9f0bf988ac0e1ac16d492b8b4594e39cf675"
+        "sha256": "ac653393f1084c387ad5d3986d726236143bf6d9d7399cf90349fd97ea34b48d"
       },
       "exploded_render": {
-        "bytes": 83698,
+        "bytes": 61932,
         "height": 1000,
         "nonblank_sample_colours": 15,
         "path": "23-six-pack-beer/six-pack-beer-exploded.png",
-        "sha256": "43727c4c153322e72a9ed3dd0981597f00df260cb288ba7d8d492bef96b45f0a",
+        "sha256": "52242fda4596e40e56a4e8673824eb0092e4fd95f94324c5719f8f92663f6199",
         "view": "native FreeCAD axonometric exploded view \u2014 presentation spacing only",
-        "viewport_foreground_samples": 248,
+        "viewport_foreground_samples": 241,
         "width": 1400
       },
       "fcstd": {
-        "bytes": 155069,
+        "bytes": 154735,
         "cold_reopen": true,
         "path": "23-six-pack-beer/six-pack-beer.FCStd",
         "portable_source_scan": {
@@ -6908,7 +6943,7 @@
           "ok": true
         },
         "project_schema_version": 1,
-        "sha256": "9dbc022fc1d5e83af643d059d365420ff9f4d8878708abb8a7c227b929674a7f"
+        "sha256": "65bcefe257cde7b5cb65b77a269aac7d900be74fa44575a9d3964ae8da204461"
       },
       "id": "theme.six-pack-beer.v1",
       "layers": {
@@ -7014,18 +7049,18 @@
         }
       ],
       "render": {
-        "bytes": 74911,
+        "bytes": 61111,
         "height": 1000,
-        "nonblank_sample_colours": 15,
+        "nonblank_sample_colours": 16,
         "path": "23-six-pack-beer/six-pack-beer.png",
-        "sha256": "5d6aa716c8a4b55f3cefc0153e1a88375f8711f1b3c934fd6b0f14c8400a5f61",
+        "sha256": "72bc3fb0614995c7748588726f8baacb38ae777d58de98bbb0bd32358e19a2fe",
         "view": "native FreeCAD axonometric assembled view",
-        "viewport_foreground_samples": 241,
+        "viewport_foreground_samples": 253,
         "width": 1400
       },
       "render_pair_difference": {
-        "changed_ratio": 0.258464,
-        "changed_viewport_pixels": 794,
+        "changed_ratio": 0.111654,
+        "changed_viewport_pixels": 343,
         "headers_excluded": true,
         "minimum_changed_ratio": 0.025,
         "sampled_viewport_pixels": 3072
@@ -7050,16 +7085,16 @@
     }
   ],
   "exploded_contact_sheet": {
-    "bytes": 670413,
+    "bytes": 682668,
     "cells": 23,
     "height": 1890,
     "layout": "4 columns x 6 rows",
     "path": "exploded-contact-sheet.png",
-    "sha256": "111af404c5e4f5bbc0336583269c5c9ff43aedb188f69b1c41350743ed39ecdf",
+    "sha256": "7224a0c547b8a70c84654f171000bdad779d80d498ea54d087cccaba551564d1",
     "width": 1680
   },
   "freecad_version": "1.1.3",
-  "generated_on": "2026-09-04",
+  "generated_on": "2026-09-05",
   "generator": "Case Insert Generator",
   "geometry_provenance": "synthetic-demonstration",
   "ok": true,
@@ -7069,11 +7104,11 @@
   "source_commit_verified": true,
   "source_inputs_tracked": true,
   "source_sha256": {
-    "freecad/CaseInsertGenerator/engine.py": "09f0076526fb92d3f6fc62f4b67729492009db8ef76226c99a867d646ceed2f0",
-    "freecad/CaseInsertGenerator/project_model.py": "5f445c305082d98cae4bdcffd46234a22b4d2ab9219f32e88b891088ccc47143",
-    "freecad/CaseInsertGenerator/svg_import.py": "51320aaf73ec913d03919604cbcdc202e981144666aebaa34d89af5f63044814",
-    "scripts/artifact_audit.py": "73cf3e25110d92bf359a5674a17581b695112dcbf3fbbf37548ba6ccbb8bc4f3",
-    "scripts/generate_themed_examples.py": "1fe84cc2a548e1c5548b9f422bf4ea8d3cb50f5608a08530e1c4ad800928323d",
+    "freecad/CaseInsertGenerator/engine.py": "82bfba1d952120a2cfbb7f207f8296583847ab8d98803ab13234ee989cc41c1b",
+    "freecad/CaseInsertGenerator/project_model.py": "8645fcc252fac0096b1c88e1931225612dd578daa3246d4dc16f279cf6d7cc34",
+    "freecad/CaseInsertGenerator/svg_import.py": "f7cef873bac4086455de5b75b41401741808bd4a57ba106b941ae3cc871eb516",
+    "scripts/artifact_audit.py": "9d540396f161bc465e9bf89d878b086185de557cff94bb0e6450b0d1f06cd960",
+    "scripts/generate_themed_examples.py": "85095a056c5b4860e48f47764e9200ab62f5e93c350339008f92a75ce9ac7563",
     "scripts/themed_example_catalog.py": "cc2a5b7f34b72e1c6bacbc4aa2f9e94834558c6a6dfc7105cacfd9cae02a05c9"
   },
   "summary": {

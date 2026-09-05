@@ -62,26 +62,30 @@ class GuiStateRegressions(unittest.TestCase):
         self.documents = []
         self.controllers = []
         self.details = {}
-        self.previous_active = App.ActiveDocument
+        active = App.ActiveDocument
+        self.previous_active = (active.Name, active) if active is not None else None
 
     def tearDown(self):
         for controller in self.controllers:
             controller.dialog.close()
-        for doc in reversed(self.documents):
-            try:
-                if App.listDocuments().get(doc.Name) is doc:
-                    App.closeDocument(doc.Name)
-            except RuntimeError:
-                pass
-        try:
-            if self.previous_active is not None:
-                App.setActiveDocument(self.previous_active.Name)
-        except RuntimeError:
-            pass
+        # FreeCAD invalidates a closed document's Python wrapper, including
+        # its Name attribute. Retain names while documents are alive and check
+        # identity so a different document reusing a name is never closed.
+        for name, doc in reversed(self.documents):
+            if App.listDocuments().get(name) is doc:
+                App.closeDocument(name)
+        if self.previous_active is not None:
+            name, doc = self.previous_active
+            if App.listDocuments().get(name) is doc:
+                App.setActiveDocument(name)
+
+    def remember_document(self, doc):
+        self.documents.append((doc.Name, doc))
+        return doc
 
     def document(self, name, spec=None, lid=False):
         doc = App.newDocument("GuiRegression_" + name)
-        self.documents.append(doc)
+        self.remember_document(doc)
         if spec is not None:
             (E.generate_lid_panel_project if lid else E.generate_project)(
                 spec, document=doc)
@@ -106,7 +110,7 @@ class GuiStateRegressions(unittest.TestCase):
     def reopen(self, doc, path):
         App.closeDocument(doc.Name)
         reopened = App.openDocument(str(path))
-        self.documents.append(reopened)
+        self.remember_document(reopened)
         return reopened
 
     def capture(self, controller, name):
@@ -226,7 +230,7 @@ class GuiStateRegressions(unittest.TestCase):
         name = first.Name
         App.closeDocument(name)
         second = App.newDocument(name)
-        self.documents.append(second)
+        self.remember_document(second)
         E.generate_project(_spec(55.0), document=second)
         before = E.load_project(second)
         path = self.output / "closed.FCStd"
@@ -246,7 +250,7 @@ class GuiStateRegressions(unittest.TestCase):
         controller._generate()
         self.assertEqual(controller.errors, [])
         created = controller._document
-        self.documents.append(created)
+        self.remember_document(created)
         self.assertIsNot(created, second)
         self.assertEqual(E.load_project(second)["objects"][0]["width"], 55.0)
 

@@ -457,6 +457,7 @@
     "unplaced": [],
     "warnings": [
       "Upper carrier includes keyed alignment, support surfaces, and two side lift-access notches.",
+      "Loose storage divider region 'needle-cards' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
       "Lower carrier split into 2 bed-sized parts with straight butt seams.",
       "Upper carrier split into 2 bed-sized parts with straight butt seams."
     ]

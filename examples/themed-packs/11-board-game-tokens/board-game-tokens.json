@@ -460,6 +460,8 @@
     "schema_version": 1,
     "unplaced": [],
     "warnings": [
+      "Loose storage existing container bay 'cards-a' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
+      "Loose storage existing container bay 'cards-b' has no containment while closed-lid clearance is unknown or positive; select a shared panel; individual bin lids cover removable bins only before carrying the case.",
       "Lower carrier split into 2 bed-sized parts with straight butt seams."
     ]
   },

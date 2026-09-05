@@ -48,6 +48,11 @@ class LengthTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     parse_length_mm(raw)
 
+    def test_nonfinite_lengths_and_unit_conversion_overflow_are_rejected(self) -> None:
+        for raw in ("1e309mm", "-1e309mm", "1e308in"):
+            with self.subTest(raw=raw), self.assertRaisesRegex(ValueError, "finite"):
+                parse_length_mm(raw)
+
 
 class ViewportTests(unittest.TestCase):
     def test_viewbox_none_maps_axes_independently_to_millimetres(self) -> None:
@@ -93,6 +98,19 @@ class ViewportTests(unittest.TestCase):
 
 
 class TransformTests(unittest.TestCase):
+    def test_transform_and_viewport_overflow_are_fatal(self) -> None:
+        sources = (
+            svg('<rect width="5" height="5" transform="scale(1e309)"/>'),
+            svg('<rect width="5" height="5" transform="scale(1e200) scale(1e200)"/>'),
+            svg('<g transform="scale(1e200)"><rect width="5" height="5" transform="scale(1e200)"/></g>'),
+            svg('<rect width="5" height="5"/>', 'width="1e200mm" height="50mm" viewBox="0 0 1e-200 50" preserveAspectRatio="none"'),
+        )
+        for source in sources:
+            with self.subTest(source=source):
+                result = preflight_svg(source)
+                self.assertFalse(result.is_importable)
+                self.assertTrue(any("finite" in item.message for item in result.fatal_diagnostics))
+
     def test_nested_transforms_are_detected_and_normalized(self) -> None:
         result = preflight_svg(
             svg(
@@ -126,6 +144,158 @@ class TransformTests(unittest.TestCase):
 
 
 class GeometryTests(unittest.TestCase):
+    def test_finite_matrices_cannot_overflow_primitive_or_polygon_coordinates(self) -> None:
+        for body in (
+            '<rect x="1e308" y="0" width="10" height="5" transform="scale(10)"/>',
+            '<circle cx="1e308" cy="0" r="5" transform="scale(10)"/>',
+            '<ellipse cx="0" cy="1e308" rx="5" ry="3" transform="scale(10)"/>',
+            '<polygon points="0,0 10,0 0,10" transform="scale(1e308)"/>',
+            '<g transform="scale(2)"><rect x="1e308" width="10" height="5" transform="scale(2)"/></g>',
+            '<rect x="1e308" width="1e308" height="5"/>',
+        ):
+            with self.subTest(body=body):
+                result = preflight_svg(svg(body))
+                self.assertFalse(result.is_importable)
+                self.assertIn("INVALID_GEOMETRY_VALUE", diagnostic_codes(result))
+                self.assertTrue(any("coordinates must be finite" in item.message for item in result.fatal_diagnostics))
+
+    def test_viewport_scaling_checks_the_actual_geometry_points(self) -> None:
+        result = preflight_svg(svg(
+            '<rect width="10" height="5"/>',
+            'width="1e308mm" height="1e308mm" viewBox="0 0 1 1"',
+        ))
+        self.assertFalse(result.is_importable)
+        self.assertIn("INVALID_GEOMETRY_VALUE", diagnostic_codes(result))
+
+    def test_relative_curve_controls_and_reflections_must_resolve_finitely(self) -> None:
+        for data in (
+            'M1e308 0 c1e308 0 1e308 10 0 10 L0 10 L0 0 Z',
+            'M1e308 0 q1e308 0 0 10 L0 10 Z',
+            'M1e308 0 s1e308 10 0 10 L0 10 Z',
+            'M0 0 C0 0 -1e308 0 1e308 10 S1 20 0 20 Z',
+            'M0 0 Q-1e308 0 1e308 10 T0 20 Z',
+        ):
+            with self.subTest(data=data):
+                result = preflight_svg(svg(f'<path d="{data}"/>'))
+                self.assertFalse(result.is_importable)
+                self.assertIn("MALFORMED_PATH_DATA", diagnostic_codes(result))
+                self.assertTrue(any("Resolved geometry coordinates must be finite" in item.message for item in result.fatal_diagnostics))
+
+    def test_path_endpoints_and_controls_must_be_finite_after_transforming(self) -> None:
+        for data in (
+            'M0 0 L1e308 0 L0 10 Z',
+            'M0 0 C1e308 0 1e308 10 0 10 Z',
+            'M0 0 Q1e308 0 0 10 Z',
+        ):
+            with self.subTest(data=data):
+                result = preflight_svg(svg(f'<path d="{data}" transform="scale(10)"/>'))
+                self.assertFalse(result.is_importable)
+                self.assertIn("MALFORMED_PATH_DATA", diagnostic_codes(result))
+                self.assertTrue(any("Transformed geometry coordinates must be finite" in item.message for item in result.fatal_diagnostics))
+
+    def test_ordinary_transformed_primitives_and_curves_remain_importable(self) -> None:
+        result = preflight_svg(svg(
+            '<g transform="translate(2 3) scale(2)">'
+            '<rect x="1cm" y="2mm" width="10" height="5"/>'
+            '<circle cx="10" cy="10" r="5"/>'
+            '<ellipse cx="20" cy="10" rx="5" ry="3"/>'
+            '<path d="M0 0 c2 0 3 2 5 3 s3 2 5 3 q2 2 5 3 t5 3 L0 12 Z"/>'
+            '</g>'
+        ))
+        self.assertTrue(result.is_importable, result.to_dict())
+        self.assertEqual(result.metadata.candidate_count, 4)
+
+    def test_important_effect_wins_over_a_later_normal_declaration(self) -> None:
+        for effect in ("clip-path", "mask", "filter"):
+            for marker in ("!important", "! IMPORTANT"):
+                source = svg(
+                    f'<rect width="20" height="10" '
+                    f'style="{effect}:url(#half) {marker}; {effect}:none"/>'
+                )
+                with self.subTest(effect=effect, marker=marker):
+                    result = preflight_svg(source)
+                    self.assertFalse(result.is_importable)
+                    self.assertIn("UNSUPPORTED_GEOMETRY_EFFECT", diagnostic_codes(result))
+
+    def test_important_none_is_valid_and_obeys_same_priority_source_order(self) -> None:
+        for effect in ("clip-path", "mask", "filter"):
+            for declarations, importable in (
+                (f"{effect}:none !important", True),
+                (f"{effect}:none !important; {effect}:url(#half)", True),
+                (f"{effect}:url(#half) !important; {effect}:none !important", True),
+                (f"{effect}:none !important; {effect}:url(#half) !important", False),
+            ):
+                source = svg(f'<rect width="20" height="10" style="{declarations}"/>')
+                with self.subTest(declarations=declarations):
+                    result = preflight_svg(source)
+                    self.assertEqual(result.is_importable, importable, result.to_dict())
+                    self.assertEqual(
+                        "UNSUPPORTED_GEOMETRY_EFFECT" in diagnostic_codes(result),
+                        not importable,
+                    )
+
+    def test_effects_on_visible_geometry_and_ancestors_are_rejected(self) -> None:
+        for effect in ("clip-path", "mask", "filter"):
+            for body in (
+                f'<rect width="20" height="10" {effect}="url(#effect)"/>',
+                f'<rect width="20" height="10" style="{effect}:url(#effect)"/>',
+                f'<g {effect}="url(#effect)"><rect width="20" height="10"/></g>',
+                f'<g style="{effect}:url(#effect)"><g><rect width="20" height="10"/></g></g>',
+                f'<g {effect}="url(#effect)"><rect width="20" height="10" style="{effect}:none"/></g>',
+                f'<g visibility="hidden" {effect}="url(#effect)"><rect width="20" height="10" visibility="visible"/></g>',
+            ):
+                with self.subTest(effect=effect, body=body):
+                    result = preflight_svg(svg(body))
+                    self.assertFalse(result.is_importable)
+                    self.assertIn("UNSUPPORTED_GEOMETRY_EFFECT", diagnostic_codes(result))
+                    with self.assertRaisesRegex(SvgPreflightError, "flatten"):
+                        result.require_importable()
+
+    def test_root_effect_and_case_insensitive_css_property_are_rejected(self) -> None:
+        result = preflight_svg(svg(
+            '<rect width="20" height="10"/>',
+            'width="100mm" height="50mm" style="CLIP-PATH:url(#effect)"',
+        ))
+        self.assertIn("UNSUPPORTED_GEOMETRY_EFFECT", diagnostic_codes(result))
+
+    def test_unused_hidden_and_explicitly_disabled_effects_do_not_block(self) -> None:
+        for body in (
+            '<defs><g clip-path="url(#unused)"><rect width="20" height="10"/></g></defs>',
+            '<g display="none" clip-path="url(#unused)"><rect width="20" height="10"/></g>',
+            '<g opacity="0" filter="url(#unused)"><rect width="20" height="10"/></g>',
+            '<g visibility="hidden" mask="url(#unused)"><rect width="20" height="10"/></g>',
+            '<rect width="20" height="10" clip-path="url(#unused)" style="clip-path:none"/>',
+            '<rect width="20" height="10" clip-path="none" mask="none" filter="none"/>',
+        ):
+            with self.subTest(body=body):
+                result = preflight_svg(svg(body + '<rect width="5" height="5"/>'))
+                self.assertTrue(result.is_importable, result.to_dict())
+
+    def test_nonfinite_path_values_and_relative_overflow_are_rejected(self) -> None:
+        for data in (
+            'M0 0 L1e309 0 L10 10 Z',
+            'M0 0 C1e309 0 10 10 0 10 Z',
+            'M0 0 A10 10 -1e309 0 0 10 10 Z',
+            'M1e308 0 l1e308 0 l0 10 Z',
+        ):
+            with self.subTest(data=data):
+                result = preflight_svg(svg(f'<path d="{data}"/>'))
+                self.assertFalse(result.is_importable)
+                self.assertIn("MALFORMED_PATH_DATA", diagnostic_codes(result))
+                self.assertTrue(any("finite" in item.message for item in result.fatal_diagnostics))
+
+    def test_optional_shape_coordinates_and_radii_must_be_finite(self) -> None:
+        for tag, required, names in (
+            ("rect", 'width="20" height="10"', ("x", "y", "rx", "ry")),
+            ("circle", 'r="5"', ("cx", "cy")),
+            ("ellipse", 'rx="5" ry="3"', ("cx", "cy")),
+        ):
+            for name in names:
+                with self.subTest(tag=tag, name=name):
+                    result = preflight_svg(svg(f'<{tag} {required} {name}="1e309"/>'))
+                    self.assertFalse(result.is_importable)
+                    self.assertIn("INVALID_GEOMETRY_VALUE", diagnostic_codes(result))
+
     def test_linear_compound_path_preserves_source_winding(self) -> None:
         same = "M0 0 H40 V40 H0 Z M10 10 H30 V30 H10 Z"
         opposite = "M0 0 H40 V40 H0 Z M10 10 V30 H30 V10 Z"

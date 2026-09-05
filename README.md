@@ -19,7 +19,7 @@ synthetic examples. The bundled presets are convenient demonstration envelopes,
 not commercial case dimensions and not physical-fit claims. Measure the inside
 of a real case and print a tolerance coupon before printing a full insert.
 
-Version 0.1.0 supports FreeCAD 1.1.3 through the 1.1.x series. Release
+Version 0.1.1 supports FreeCAD 1.1.3 through the 1.1.x series. Release
 validation targets FreeCAD 1.1.3.
 
 ## Install locally
@@ -41,6 +41,14 @@ running `CaseInsertGenerator.FCMacro` after the workbench is installed.
    deterministic layouts.
 3. **Print + export** — select generated parts, optionally split them for the
    printer bed, then save FCStd or export STEP/STL.
+
+After changing a design, click **Generate / update printable model** before
+exporting. STL and STEP are available only when the generated geometry matches
+the current settings. **Save editable FreeCAD file** updates the model and saves
+the current settings; an incomplete lid configuration is saved as a preview.
+The dialog stays attached to the document it was opened for, and generation can
+be undone in FreeCAD. Generation enables document Undo when needed. Reopen the
+dialog to work on another document.
 
 The orange translucent plane always marks the case rim or seal height. A
 separate closed-lid usable ceiling is shown only when the project contains
@@ -84,6 +92,10 @@ The implementation calls FreeCAD's installed LGPL `importSVG` module at runtime;
 no upstream importer source is vendored. The pinned upstream reference is
 recorded in [NOTICE](NOTICE).
 
+SVG source files remain external references. Keep them available at their saved
+paths to regenerate a project; moving or sharing an FCStd alone preserves its
+existing geometry but does not include its SVG sources.
+
 ## Example library
 
 `examples/themed-packs/` is generated from twenty-three original, synthetic project
@@ -120,3 +132,33 @@ restricted drawings or geometry.
 
 Source code is licensed under LGPL-2.1-or-later. Original documentation and
 visual assets are licensed under CC-BY-SA-4.0. See `LICENSES/` and [NOTICE](NOTICE).
+
+## Development checks
+
+Run the standalone tests and release-tree checks from the repository folder:
+
+```sh
+python -m unittest discover -s tests -v
+python scripts/release_audit.py
+reuse lint
+```
+
+With this checkout installed as the workbench, run
+`RunRegressionChecks.FCMacro` from **Macro → Macros…** in FreeCAD 1.1.3. It runs
+the CAD integration, input-validation, recovery, and GUI state suites and writes
+`artifacts/regressions/results.json` plus GUI screenshots. It leaves FreeCAD
+open and uses temporary test documents. Each run keeps its own report and
+screenshots in a dated subfolder. Run the separate `tests/gui_smoke.py`
+script in a fresh FreeCAD profile when verifying installation and lazy startup.
+
+Python callers of `engine.export_stl()` and `engine.export_step()` must pass
+`overwrite=True` to replace existing files. `engine.export_paths()` returns the
+actual destination list, including numbered part filenames. The GUI displays
+those collisions before asking to replace them.
+
+Generated example manifests verify the source hashes. After changing their
+generator inputs, commit the source changes, regenerate with
+`scripts/run_themed_examples_gui.py` and `scripts/run_lid_panel_example_gui.py`
+in a dedicated FreeCAD GUI process, and rerun the checks before committing the
+refreshed examples. These two renderer scripts exit their FreeCAD process when
+finished. Keep physical-fit claims separate from these software checks.

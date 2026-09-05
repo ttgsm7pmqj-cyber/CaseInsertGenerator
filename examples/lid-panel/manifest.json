@@ -1,16 +1,16 @@
 {
   "assembled": {
     "fcstd": {
-      "bytes": 72490,
+      "bytes": 71928,
       "path": "synthetic-lid-equipment-panel.FCStd",
-      "sha256": "629006eca13f40bd410e73299ca1f6da37f59450e8bb38e5c021a0f1eadb4576"
+      "sha256": "b6eec665a6ae923dcf356136dbf21853594241b7e2bcb55c2a37896bdcdd4d91"
     },
     "png": {
-      "bytes": 26522,
+      "bytes": 40929,
       "height": 1000,
       "path": "synthetic-lid-equipment-panel.png",
-      "sample_colours": 5,
-      "sha256": "d709c6ea3e72d85b6ab0a0b5069d5a2d47b5d3554116aa1bed5fbc8fffbe9d85",
+      "sample_colours": 8,
+      "sha256": "61f32c1ff38d5b62bb20000147bb6875c441cc3867d91caea20fe3150d4bc1fc",
       "width": 1400
     },
     "result_names": [
@@ -53,16 +53,16 @@
       ]
     },
     "fcstd": {
-      "bytes": 72624,
+      "bytes": 72055,
       "path": "synthetic-lid-equipment-panel-exploded.FCStd",
-      "sha256": "d4760c1d4f50d71fa1135a55648cad1cb0ed2787d896db72b043b8fabf45ec06"
+      "sha256": "745bc768fcb453cbcf57c9ee6a92ea7901dfff6f554898a5472a6fc01f2b95e2"
     },
     "png": {
-      "bytes": 40772,
+      "bytes": 42710,
       "height": 1000,
       "path": "synthetic-lid-equipment-panel-exploded.png",
-      "sample_colours": 6,
-      "sha256": "f9b0cf32b71579a9efd95907a6ba15bf8eae93e0dd6e3ffea152dc3d0ff3f865",
+      "sample_colours": 10,
+      "sha256": "69c662a26843d9f0e1432242b7b54d520c889c720cdf1e8db7f11a83820a8c76",
       "width": 1400
     },
     "result_names": [
@@ -73,6 +73,7 @@
       "LidPanelRetainer04"
     ]
   },
+  "generated_on": "2026-09-05",
   "generator": "Case Insert Generator",
   "geometry_provenance": "synthetic-demonstration",
   "height_budget": {

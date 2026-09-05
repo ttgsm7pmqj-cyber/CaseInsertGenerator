@@ -2,6 +2,25 @@
 
 # Changelog
 
+## [0.1.1] - 2026-09-05
+
+- Bind each dialog to its document, preserve current edits when saving, and
+  require current generated geometry before STL/STEP export. Detect external
+  changes to generated shapes and placements while the dialog is open.
+- Restore legacy divider/SVG settings on reopen and preserve schema metadata,
+  floor dimensions, and stable object IDs through GUI editing. Restore optional
+  API defaults and preserve manual positions after an earlier automatic layout.
+- Make generation undoable and roll back failed document updates; check actual
+  numbered export destinations and preserve previous files on export failure.
+- Reject unsupported SVG effects, nonfinite CAD dimensions and overflowing SVG
+  coordinates, and warn when individual bin lids leave other loose-storage
+  regions uncovered.
+- Repair Fit model in view and preserve generation warnings.
+- Assign consistent embedded CC-BY-SA-4.0 metadata to distributed FCStd examples
+  and record their actual generation date.
+- Add a repeatable FreeCAD macro for the CAD and GUI regression suites, with
+  separate reports and screenshots for each run.
+
 ## [0.1.0] - 2026-09-04
 
 - Added the generic schema-v1 case-insert engine, editable FCStd projects,

@@ -6,8 +6,12 @@ from __future__ import annotations
 from pathlib import Path
 import re
 from typing import Any
+import xml.etree.ElementTree as ET
 import zipfile
 
+
+EXAMPLE_LICENSE = "CC-BY-SA-4.0"
+EXAMPLE_LICENSE_URL = "https://creativecommons.org/licenses/by-sa/4.0/"
 
 PROHIBITED_SOURCE_MARKERS = (
     "confidential-" + "source",
@@ -38,11 +42,26 @@ def text_findings(text: str, member: str = "<text>") -> list[dict[str, str]]:
     return findings
 
 
-def scan_fcstd(fcstd_path: str | Path) -> dict[str, Any]:
-    """Scan text-bearing FCStd members for private origins and local paths."""
+def scan_fcstd(fcstd_path: str | Path, *,
+               require_example_license: bool = False) -> dict[str, Any]:
+    """Check portable sources and, optionally, the distributed example licence."""
 
     findings: list[dict[str, str]] = []
     with zipfile.ZipFile(Path(fcstd_path)) as archive:
+        if require_example_license:
+            try:
+                document = ET.fromstring(archive.read("Document.xml"))
+                for name, expected in (("License", EXAMPLE_LICENSE),
+                                       ("LicenseURL", EXAMPLE_LICENSE_URL)):
+                    value = document.find(
+                        "./Properties/Property[@name='%s']/String" % name)
+                    if value is None or value.get("value") != expected:
+                        findings.append({"member": "Document.xml",
+                                         "kind": "example-licence-mismatch",
+                                         "property": name})
+            except (KeyError, ET.ParseError):
+                findings.append({"member": "Document.xml",
+                                 "kind": "invalid-example-document"})
         for member in archive.namelist():
             if not member.lower().endswith((".xml", ".json", ".txt")):
                 continue
@@ -54,4 +73,5 @@ def scan_fcstd(fcstd_path: str | Path) -> dict[str, Any]:
     return {"ok": not findings, "findings": findings}
 
 
-__all__ = ["PROHIBITED_SOURCE_MARKERS", "scan_fcstd", "text_findings"]
+__all__ = ["EXAMPLE_LICENSE", "EXAMPLE_LICENSE_URL", "PROHIBITED_SOURCE_MARKERS",
+           "scan_fcstd", "text_findings"]

@@ -17,8 +17,8 @@ import zlib
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.1.0"
-RELEASE_DATE = "2026-09-04"
+VERSION = "0.1.1"
+RELEASE_DATE = "2026-09-05"
 REPOSITORY_URL = "https://github.com/ttgsm7pmqj-cyber/CaseInsertGenerator"
 
 FORBIDDEN_MARKERS = {
@@ -108,6 +108,19 @@ def _scan_fcstd(path: Path, relative: str, findings: list[dict[str, str]]) -> No
             names = archive.namelist()
             if "Document.xml" not in names:
                 _finding(findings, relative, "FCStd missing Document.xml")
+            else:
+                try:
+                    document = ET.fromstring(archive.read("Document.xml"))
+                    for name, expected in (
+                            ("License", "CC-BY-SA-4.0"),
+                            ("LicenseURL", "https://creativecommons.org/licenses/by-sa/4.0/")):
+                        value = document.find(
+                            "./Properties/Property[@name='%s']/String" % name)
+                        if value is None or value.get("value") != expected:
+                            _finding(findings, relative + "::Document.xml",
+                                     "example " + name + " mismatch")
+                except ET.ParseError:
+                    _finding(findings, relative, "FCStd invalid Document.xml")
             _scan_bytes(archive.comment, relative + "::<archive-comment>", findings)
             for member in names:
                 member_path = PurePosixPath(member)
@@ -243,7 +256,7 @@ def _metadata_checks(root: Path, findings: list[dict[str, str]]) -> None:
         _finding(findings, "package.xml", "workbench classname mismatch")
     init_text = (root / "freecad" / "CaseInsertGenerator" / "__init__.py").read_text(
         encoding="utf-8")
-    if not re.search(r'^__version__\s*=\s*["\']0\.1\.0["\']\s*$', init_text, re.M):
+    if not re.search(rf'^__version__\s*=\s*["\']{re.escape(VERSION)}["\']\s*$', init_text, re.M):
         _finding(findings, "freecad/CaseInsertGenerator/__init__.py", "version mismatch")
     model_text = (root / "freecad" / "CaseInsertGenerator" / "project_model.py").read_text(
         encoding="utf-8")

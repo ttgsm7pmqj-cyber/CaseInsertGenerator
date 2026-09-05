@@ -6,11 +6,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 import tempfile
 from typing import Any
 
 import FreeCAD as App
+
+from scripts.artifact_audit import EXAMPLE_LICENSE, EXAMPLE_LICENSE_URL, scan_fcstd
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -266,6 +269,8 @@ def generate_lid_panel_example(repo_root=ROOT, output_root=OUTPUT,
     try:
         assembled = App.newDocument("CIGSyntheticLidPanelAssembled")
         documents.append(assembled)
+        assembled.License = EXAMPLE_LICENSE
+        assembled.LicenseURL = EXAMPLE_LICENSE_URL
         assembled_report = engine.generate_lid_panel_project(spec, document=assembled)
         assembled_payload = (
             assembled_report.to_mapping()
@@ -279,6 +284,8 @@ def generate_lid_panel_example(repo_root=ROOT, output_root=OUTPUT,
 
         exploded = App.newDocument("CIGSyntheticLidPanelExploded")
         documents.append(exploded)
+        exploded.License = EXAMPLE_LICENSE
+        exploded.LicenseURL = EXAMPLE_LICENSE_URL
         exploded_report = engine.generate_lid_panel_project(spec, document=exploded)
         exploded_payload = (
             exploded_report.to_mapping()
@@ -311,6 +318,7 @@ def generate_lid_panel_example(repo_root=ROOT, output_root=OUTPUT,
 
         manifest = {
             "schema_version": 1,
+            "generated_on": datetime.now(timezone.utc).date().isoformat(),
             "generator": "Case Insert Generator",
             "title": "Synthetic Inside-lid Equipment Panel",
             "geometry_provenance": "synthetic-demonstration",
@@ -342,6 +350,8 @@ def generate_lid_panel_example(repo_root=ROOT, output_root=OUTPUT,
             assembled_payload["valid"] and exploded_payload["valid"] and
             assembled_payload.get("printable") is True and
             manifest["physical_fit_status"] == "unverified" and
+            scan_fcstd(assembled_path, require_example_license=True)["ok"] and
+            scan_fcstd(exploded_path, require_example_license=True)["ok"] and
             (not render or (assembled_render and exploded_render)))
         manifest_path = output / "manifest.json"
         manifest_path.write_text(

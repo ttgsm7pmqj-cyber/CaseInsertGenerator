@@ -6,6 +6,9 @@ import importlib
 import json
 import math
 import os
+import shutil
+import tempfile
+from contextlib import contextmanager
 
 import FreeCAD as App
 import Part
@@ -381,7 +384,31 @@ def _safe_remove_group(doc):
     doc.recompute()
 
 
+@contextmanager
+def _generation_transaction(doc, label):
+    """Replace a project atomically, enabling document Undo after success."""
+    if doc.HasPendingTransaction:
+        raise RuntimeError(
+            "Finish the active FreeCAD operation before generating an insert.")
+    # Headless callers can start with Undo disabled. Transactions must record
+    # changes there too so an abort restores the last editable project.
+    undo_was_enabled = bool(doc.UndoMode)
+    if not undo_was_enabled:
+        doc.UndoMode = 1
+    doc.openTransaction(label)
+    try:
+        yield
+        doc.commitTransaction()
+    except BaseException:
+        doc.abortTransaction()
+        doc.recompute()
+        if not undo_was_enabled:
+            doc.UndoMode = 0
+        raise
+
+
 def _add_parameter_object(doc, group, params, result_name):
+    parameter_json = json.dumps(params, sort_keys=True, allow_nan=False)
     obj = _mark_generator_object(
         doc.addObject("App::FeaturePython", PARAM_OBJECT), "parameters")
     group.addObject(obj)
@@ -396,7 +423,7 @@ def _add_parameter_object(doc, group, params, result_name):
     obj.addProperty("App::PropertyStringList", "GeneratedResults", "Generator")
     obj.GeneratedResults = result_names
     obj.addProperty("App::PropertyString", "ParameterJSON", "Generator")
-    obj.ParameterJSON = json.dumps(params, sort_keys=True)
+    obj.ParameterJSON = parameter_json
     length_keys = (
         "internal_length", "internal_width", "insert_depth", "corner_radius",
         "lid_length", "lid_width", "lid_clearance",
@@ -1995,7 +2022,6 @@ def generate_project(spec, document=None):
     occupied = {key: [] for key in carriers}
     extra_parts = []
     warnings = []
-    loose_storage_count = 0
     unplaced_ids = {
         str(item.get("object_id")) for item in normalized.get("unplaced", [])
         if isinstance(item, dict) and item.get("object_id")
@@ -2024,9 +2050,6 @@ def generate_project(spec, document=None):
     for obj in normalized.get("objects", []):
         if obj["id"] in unplaced_ids:
             continue
-        if obj["type"] in (
-                "removable_bin", "existing_container_bay", "divider_region"):
-            loose_storage_count += 1
         layer = obj.get("layer", "lower") if use_layers else "lower"
         if layer not in carriers:
             raise ValueError("Object %s targets an unavailable layer" % obj["id"])
@@ -2269,13 +2292,7 @@ def generate_project(spec, document=None):
         warnings.append(
             "Shared panel and quarter-turn clips are a printable prototype; "
             "calibrate the retention coupon and loaded carry before release.")
-    elif containment_mode == "none" and loose_storage_count:
-        lid_source, lid_clearance = _lid_clearance(params)
-        if lid_clearance is None or lid_clearance > 0.0:
-            warnings.append(
-                "Loose storage has no containment while closed-lid clearance "
-                "is unknown or positive; select a shared "
-                "panel or individual bin lids before carrying the case.")
+    warnings.extend(model_api.uncovered_storage_warnings(normalized))
 
     source_parts = []
     for layer in ("lower", "upper"):
@@ -2315,68 +2332,72 @@ def generate_project(spec, document=None):
                      part_shape.BoundBox.YLength, usable_x, usable_y))
             printable_parts.append((part_name, part_label, part_shape))
 
-    # All expensive geometry and validation completed before replacing the
-    # prior generated group, so a failed boolean leaves the last good result.
+    # Validate metadata serialization before touching the last good result.
+    # Result names are assigned by FreeCAD during the transaction below.
+    json.dumps(normalized, sort_keys=True, allow_nan=False)
+    json.dumps(params, sort_keys=True, allow_nan=False)
     doc = document or App.ActiveDocument
     if doc is None:
         doc = App.newDocument("CaseInsertProject")
-    _safe_remove_group(doc)
-    group = _mark_generator_object(
-        doc.addObject("App::DocumentObjectGroup", PROJECT_GROUP), "project-root")
-    group.Label = "Case Insert Generator"
-    print_objects = [
-        _add_shape(doc, group, name, label, shape)
-        for name, label, shape in printable_parts
-    ]
+    with _generation_transaction(doc, "Generate composed case insert"):
+        _safe_remove_group(doc)
+        group = _mark_generator_object(
+            doc.addObject("App::DocumentObjectGroup", PROJECT_GROUP), "project-root")
+        group.Label = "Case Insert Generator"
+        print_objects = [
+            _add_shape(doc, group, name, label, shape)
+            for name, label, shape in printable_parts
+        ]
 
-    result_names = [item.Name for item in print_objects]
-    normalized["result"] = result_names[0] if result_names else ""
-    normalized["results"] = result_names
-    normalized["parts"] = len(result_names)
-    normalized["warnings"] = list(warnings)
-    normalized["unplaced"] = list(normalized.get("unplaced", []))
+        result_names = [item.Name for item in print_objects]
+        normalized["result"] = result_names[0] if result_names else ""
+        normalized["results"] = result_names
+        normalized["parts"] = len(result_names)
+        normalized["warnings"] = list(warnings)
+        normalized["unplaced"] = list(normalized.get("unplaced", []))
 
-    length, width, _depth, _radius = _effective_case(params)
-    model = _case_model(params)
-    rim_z = ((float(model.get("bottom_depth") or model["internal_depth"]) -
-              _as_float(params, "bottom_clearance", 0.0)) if model
-             else total_height)
-    _add_clearance_references(doc, group, params, length, width, rim_z)
-    params_obj = _add_parameter_object(
-        doc, group, params, result_names)
-    params_obj.addProperty("App::PropertyInteger", "SchemaVersion", "Project")
-    params_obj.SchemaVersion = 1
-    params_obj.addProperty("App::PropertyString", "ProjectJSON", "Project")
-    params_obj.ProjectJSON = json.dumps(normalized, sort_keys=True)
-    params_obj.addProperty("App::PropertyStringList", "Warnings", "Project")
-    params_obj.Warnings = warnings
-    group.addProperty("App::PropertyInteger", "SchemaVersion", "Project")
-    group.SchemaVersion = 1
-    group.addProperty("App::PropertyString", "ProjectJSON", "Project")
-    group.ProjectJSON = params_obj.ProjectJSON
-    doc.recompute()
-    report = {
-        "document": doc.Name,
-        "results": result_names,
-        "parts": len(print_objects),
-        "mode": "Project Composer",
-        "valid": all(item.Shape.isValid() for item in print_objects),
-        "solids": sum(len(item.Shape.Solids) for item in print_objects),
-        "volume": sum(item.Shape.Volume for item in print_objects),
-        "warnings": warnings,
-        "unplaced": list(normalized.get("unplaced", [])),
-        "project": normalized,
-    }
-    result_type = getattr(model_api, "GenerationResult", None)
-    return result_type.from_mapping(report) if result_type and hasattr(result_type, "from_mapping") else report
+        length, width, _depth, _radius = _effective_case(params)
+        model = _case_model(params)
+        rim_z = ((float(model.get("bottom_depth") or model["internal_depth"]) -
+                  _as_float(params, "bottom_clearance", 0.0)) if model
+                 else total_height)
+        _add_clearance_references(doc, group, params, length, width, rim_z)
+        params_obj = _add_parameter_object(
+            doc, group, params, result_names)
+        params_obj.addProperty("App::PropertyInteger", "SchemaVersion", "Project")
+        params_obj.SchemaVersion = 1
+        params_obj.addProperty("App::PropertyString", "ProjectJSON", "Project")
+        params_obj.ProjectJSON = json.dumps(normalized, sort_keys=True, allow_nan=False)
+        params_obj.addProperty("App::PropertyStringList", "Warnings", "Project")
+        params_obj.Warnings = warnings
+        group.addProperty("App::PropertyInteger", "SchemaVersion", "Project")
+        group.SchemaVersion = 1
+        group.addProperty("App::PropertyString", "ProjectJSON", "Project")
+        group.ProjectJSON = params_obj.ProjectJSON
+        doc.recompute()
+        report = {
+            "document": doc.Name,
+            "results": result_names,
+            "parts": len(print_objects),
+            "mode": "Project Composer",
+            "valid": all(item.Shape.isValid() for item in print_objects),
+            "solids": sum(len(item.Shape.Solids) for item in print_objects),
+            "volume": sum(item.Shape.Volume for item in print_objects),
+            "warnings": warnings,
+            "unplaced": list(normalized.get("unplaced", [])),
+            "project": normalized,
+        }
+        result_type = getattr(model_api, "GenerationResult", None)
+        return result_type.from_mapping(report) if result_type and hasattr(result_type, "from_mapping") else report
 
 
 def _store_schema_project(doc, group, project, params, result_names, warnings):
+    project_json = json.dumps(project, sort_keys=True, allow_nan=False)
     params_obj = _add_parameter_object(doc, group, params, result_names)
     params_obj.addProperty("App::PropertyInteger", "SchemaVersion", "Project")
     params_obj.SchemaVersion = 1
     params_obj.addProperty("App::PropertyString", "ProjectJSON", "Project")
-    params_obj.ProjectJSON = json.dumps(project, sort_keys=True)
+    params_obj.ProjectJSON = project_json
     params_obj.addProperty("App::PropertyStringList", "Warnings", "Project")
     params_obj.Warnings = list(warnings)
     group.addProperty("App::PropertyInteger", "SchemaVersion", "Project")
@@ -2439,29 +2460,6 @@ def preview_lid_panel_project(spec, document=None):
                 "lid-keepout-reference",
             ))
 
-    doc = document or App.ActiveDocument
-    if doc is None:
-        doc = App.newDocument("CaseInsertLidPanelPreview")
-    _safe_remove_group(doc)
-    group = _mark_generator_object(
-        doc.addObject("App::DocumentObjectGroup", PROJECT_GROUP), "project-root")
-    group.Label = "Case Insert Generator — Lid Panel Preview"
-    for name, label, shape, role in preview_shapes:
-        obj = _add_shape(doc, group, name, label, shape, role=role)
-        try:
-            if role == "lid-panel-preview":
-                obj.ViewObject.ShapeColor = (0.25, 0.65, 0.90)
-                obj.ViewObject.Transparency = 35
-            elif role == "lid-retainer-preview":
-                obj.ViewObject.ShapeColor = (0.95, 0.48, 0.12)
-                obj.ViewObject.Transparency = 20
-            elif role == "lid-keepout-reference":
-                obj.ViewObject.ShapeColor = (0.90, 0.30, 0.20)
-                obj.ViewObject.Transparency = 30
-            else:
-                obj.ViewObject.ShapeColor = (0.75, 0.75, 0.75)
-        except Exception:
-            pass
     params = _project_case_params(project)
     params["insert_type"] = "Lid Panel Preview"
     project["result"] = ""
@@ -2478,27 +2476,54 @@ def preview_lid_panel_project(spec, document=None):
             dict(preview_package["plan"]) if preview_package else None),
     }
     project.setdefault("verification", {})["physical_fit"] = False
-    _store_schema_project(doc, group, project, params, [], warnings)
-    doc.recompute()
-    report = {
-        "document": doc.Name,
-        "results": [],
-        "parts": 0,
-        "mode": "Lid Panel Preview",
-        "valid": True,
-        "solids": 0,
-        "volume": 0.0,
-        "warnings": warnings,
-        "unplaced": [],
-        "project": project,
-        "printable": False,
-        "height_budget": budget,
-        "pattern_bounds": (
-            list(preview_package["pattern_bounds"]) if preview_package else []),
-    }
-    result_type = getattr(model_api, "GenerationResult", None)
-    return (result_type.from_mapping(report)
-            if result_type and hasattr(result_type, "from_mapping") else report)
+    json.dumps(project, sort_keys=True, allow_nan=False)
+    json.dumps(params, sort_keys=True, allow_nan=False)
+
+    doc = document or App.ActiveDocument
+    if doc is None:
+        doc = App.newDocument("CaseInsertLidPanelPreview")
+    with _generation_transaction(doc, "Preview lid panel"):
+        _safe_remove_group(doc)
+        group = _mark_generator_object(
+            doc.addObject("App::DocumentObjectGroup", PROJECT_GROUP), "project-root")
+        group.Label = "Case Insert Generator — Lid Panel Preview"
+        for name, label, shape, role in preview_shapes:
+            obj = _add_shape(doc, group, name, label, shape, role=role)
+            try:
+                if role == "lid-panel-preview":
+                    obj.ViewObject.ShapeColor = (0.25, 0.65, 0.90)
+                    obj.ViewObject.Transparency = 35
+                elif role == "lid-retainer-preview":
+                    obj.ViewObject.ShapeColor = (0.95, 0.48, 0.12)
+                    obj.ViewObject.Transparency = 20
+                elif role == "lid-keepout-reference":
+                    obj.ViewObject.ShapeColor = (0.90, 0.30, 0.20)
+                    obj.ViewObject.Transparency = 30
+                else:
+                    obj.ViewObject.ShapeColor = (0.75, 0.75, 0.75)
+            except Exception:
+                pass
+        _store_schema_project(doc, group, project, params, [], warnings)
+        doc.recompute()
+        report = {
+            "document": doc.Name,
+            "results": [],
+            "parts": 0,
+            "mode": "Lid Panel Preview",
+            "valid": True,
+            "solids": 0,
+            "volume": 0.0,
+            "warnings": warnings,
+            "unplaced": [],
+            "project": project,
+            "printable": False,
+            "height_budget": budget,
+            "pattern_bounds": (
+                list(preview_package["pattern_bounds"]) if preview_package else []),
+        }
+        result_type = getattr(model_api, "GenerationResult", None)
+        return (result_type.from_mapping(report)
+                if result_type and hasattr(result_type, "from_mapping") else report)
 
 
 def generate_lid_panel_project(spec, document=None):
@@ -2585,62 +2610,6 @@ def generate_lid_panel_project(spec, document=None):
         positioned_tools = package["tools"].copy()
         positioned_tools.translate(offset)
 
-    doc = document or App.ActiveDocument
-    if doc is None:
-        doc = App.newDocument("CaseInsertLidPanel")
-    _safe_remove_group(doc)
-    group = _mark_generator_object(
-        doc.addObject("App::DocumentObjectGroup", PROJECT_GROUP), "project-root")
-    group.Label = "Case Insert Generator — Inside-lid Panel"
-    lid_length = float(project["lid"]["length_mm"])
-    lid_width = float(project["lid"]["width_mm"])
-    lid_reference = _add_shape(
-        doc, group, "LidEnvelopeReference", "Evidenced lid-panel envelope",
-        Part.makePlane(lid_length, lid_width), role="lid-envelope-reference")
-    lid_reference.addProperty("App::PropertyString", "Evidence", "Clearance")
-    lid_reference.Evidence = "%s lid envelope; physical fit unverified" % (
-        project["lid"]["envelope_source"])
-    if positioned_tools is not None:
-        tools_obj = _add_shape(
-            doc, group, "LidPanelTools",
-            "Pattern, mounting, lift, and keep-out tools",
-            positioned_tools, False, role="construction-tool")
-        tools_obj.addProperty("App::PropertyInteger", "PatternCount", "Panel")
-        tools_obj.PatternCount = int(package["pattern_count"])
-
-    print_objects = []
-    if len(positioned_parts) == 1:
-        print_objects.append(_add_shape(
-            doc, group, "LidPanel", "Inside-lid equipment panel",
-            positioned_parts[0]))
-    else:
-        assembly = _add_shape(
-            doc, group, "LidPanelAssemblyReference",
-            "Inside-lid panel (uncut assembly reference)",
-            assembled_panel, False, role="assembly-reference")
-        assembly.addProperty("App::PropertyString", "Note", "Panel")
-        assembly.Note = "Non-exported reference; numbered keyed parts are the printable outputs"
-        for index, part in enumerate(positioned_parts, 1):
-            print_objects.append(_add_shape(
-                doc, group, "LidPanelPart%02d" % index,
-                "Inside-lid panel — keyed part %02d" % index, part))
-    for index, retainer in enumerate(positioned_retainers, 1):
-        print_objects.append(_add_shape(
-            doc, group, "LidPanelRetainer%02d" % index,
-            "Printable perimeter quarter-turn retainer %02d" % index,
-            retainer))
-    for obj in print_objects:
-        obj.addProperty("App::PropertyString", "PhysicalFit", "Verification")
-        obj.PhysicalFit = "unverified"
-        obj.addProperty("App::PropertyString", "PanelPattern", "Panel")
-        obj.PanelPattern = str(project["lid_panel"]["pattern"])
-
-    _add_clearance_references(doc, group, _project_case_params(project),
-                              lid_length, lid_width, 0.0)
-    result_names = [item.Name for item in print_objects]
-    project["result"] = result_names[0] if result_names else ""
-    project["results"] = result_names
-    project["parts"] = len(result_names)
     project["warnings"] = warnings
     project["unplaced"] = []
     project["lid_panel_report"] = {
@@ -2662,28 +2631,88 @@ def generate_lid_panel_project(spec, document=None):
         "panel_thickness": project["lid_panel"]["thickness_mm"],
         "payload_thickness": project["lid_panel"]["payload_thickness_mm"],
     })
-    _store_schema_project(doc, group, project, params, result_names, warnings)
-    doc.recompute()
-    report = {
-        "document": doc.Name,
-        "results": result_names,
-        "parts": len(result_names),
-        "mode": "Lid Panel",
-        "valid": all(item.Shape.isValid() for item in print_objects),
-        "solids": sum(len(item.Shape.Solids) for item in print_objects),
-        "volume": sum(item.Shape.Volume for item in print_objects),
-        "warnings": warnings,
-        "unplaced": [],
-        "project": project,
-        "printable": True,
-        "height_budget": budget,
-        "panel_plan": plan,
-        "pattern_bounds": package["pattern_bounds"],
-        "split": split_metadata,
-    }
-    result_type = getattr(model_api, "GenerationResult", None)
-    return (result_type.from_mapping(report)
-            if result_type and hasattr(result_type, "from_mapping") else report)
+    json.dumps(project, sort_keys=True, allow_nan=False)
+    json.dumps(params, sort_keys=True, allow_nan=False)
+
+    doc = document or App.ActiveDocument
+    if doc is None:
+        doc = App.newDocument("CaseInsertLidPanel")
+    with _generation_transaction(doc, "Generate lid panel"):
+        _safe_remove_group(doc)
+        group = _mark_generator_object(
+            doc.addObject("App::DocumentObjectGroup", PROJECT_GROUP), "project-root")
+        group.Label = "Case Insert Generator — Inside-lid Panel"
+        lid_length = float(project["lid"]["length_mm"])
+        lid_width = float(project["lid"]["width_mm"])
+        lid_reference = _add_shape(
+            doc, group, "LidEnvelopeReference", "Evidenced lid-panel envelope",
+            Part.makePlane(lid_length, lid_width), role="lid-envelope-reference")
+        lid_reference.addProperty("App::PropertyString", "Evidence", "Clearance")
+        lid_reference.Evidence = "%s lid envelope; physical fit unverified" % (
+            project["lid"]["envelope_source"])
+        if positioned_tools is not None:
+            tools_obj = _add_shape(
+                doc, group, "LidPanelTools",
+                "Pattern, mounting, lift, and keep-out tools",
+                positioned_tools, False, role="construction-tool")
+            tools_obj.addProperty("App::PropertyInteger", "PatternCount", "Panel")
+            tools_obj.PatternCount = int(package["pattern_count"])
+
+        print_objects = []
+        if len(positioned_parts) == 1:
+            print_objects.append(_add_shape(
+                doc, group, "LidPanel", "Inside-lid equipment panel",
+                positioned_parts[0]))
+        else:
+            assembly = _add_shape(
+                doc, group, "LidPanelAssemblyReference",
+                "Inside-lid panel (uncut assembly reference)",
+                assembled_panel, False, role="assembly-reference")
+            assembly.addProperty("App::PropertyString", "Note", "Panel")
+            assembly.Note = "Non-exported reference; numbered keyed parts are the printable outputs"
+            for index, part in enumerate(positioned_parts, 1):
+                print_objects.append(_add_shape(
+                    doc, group, "LidPanelPart%02d" % index,
+                    "Inside-lid panel — keyed part %02d" % index, part))
+        for index, retainer in enumerate(positioned_retainers, 1):
+            print_objects.append(_add_shape(
+                doc, group, "LidPanelRetainer%02d" % index,
+                "Printable perimeter quarter-turn retainer %02d" % index,
+                retainer))
+        for obj in print_objects:
+            obj.addProperty("App::PropertyString", "PhysicalFit", "Verification")
+            obj.PhysicalFit = "unverified"
+            obj.addProperty("App::PropertyString", "PanelPattern", "Panel")
+            obj.PanelPattern = str(project["lid_panel"]["pattern"])
+
+        _add_clearance_references(doc, group, _project_case_params(project),
+                                  lid_length, lid_width, 0.0)
+        result_names = [item.Name for item in print_objects]
+        project["result"] = result_names[0] if result_names else ""
+        project["results"] = result_names
+        project["parts"] = len(result_names)
+        _store_schema_project(doc, group, project, params, result_names, warnings)
+        doc.recompute()
+        report = {
+            "document": doc.Name,
+            "results": result_names,
+            "parts": len(result_names),
+            "mode": "Lid Panel",
+            "valid": all(item.Shape.isValid() for item in print_objects),
+            "solids": sum(len(item.Shape.Solids) for item in print_objects),
+            "volume": sum(item.Shape.Volume for item in print_objects),
+            "warnings": warnings,
+            "unplaced": [],
+            "project": project,
+            "printable": True,
+            "height_budget": budget,
+            "panel_plan": plan,
+            "pattern_bounds": package["pattern_bounds"],
+            "split": split_metadata,
+        }
+        result_type = getattr(model_api, "GenerationResult", None)
+        return (result_type.from_mapping(report)
+                if result_type and hasattr(result_type, "from_mapping") else report)
 
 
 def load_project(document=None):
@@ -2783,110 +2812,112 @@ def generate_insert(params, document=None):
 
     # Shape building and bed checks complete before the previous generated
     # group is replaced, so invalid input preserves the last good model.
+    json.dumps(params, sort_keys=True, allow_nan=False)
     if doc is None:
         doc = App.newDocument("CaseInsert")
-    _safe_remove_group(doc)
-    group = _mark_generator_object(
-        doc.addObject("App::DocumentObjectGroup", PROJECT_GROUP), "project-root")
-    group.Label = "Case Insert Generator"
-    # Other modes keep the usable case envelope as a hidden comparison object.
-    # Case Blank exposes that exact same solid directly, so avoid duplicating
-    # the envelope BRep in the saved FreeCAD document.
-    if mode != "Case Blank":
-        reference = _add_shape(doc, group, "CaseReference", "Case Reference",
-                               reference_shape, False)
-        reference.addProperty("App::PropertyString", "Note", "Reference")
+    with _generation_transaction(doc, "Generate case insert"):
+        _safe_remove_group(doc)
+        group = _mark_generator_object(
+            doc.addObject("App::DocumentObjectGroup", PROJECT_GROUP), "project-root")
+        group.Label = "Case Insert Generator"
+        # Other modes keep the usable case envelope as a hidden comparison object.
+        # Case Blank exposes that exact same solid directly, so avoid duplicating
+        # the envelope BRep in the saved FreeCAD document.
+        if mode != "Case Blank":
+            reference = _add_shape(doc, group, "CaseReference", "Case Reference",
+                                   reference_shape, False)
+            reference.addProperty("App::PropertyString", "Note", "Reference")
+            if mode == "Lid Panel":
+                reference.Note = (
+                    "Verified preset or user-measured lid-panel envelope; hidden by default")
+            else:
+                reference.Note = (
+                    "Measured custom or synthetic preset envelope after configured "
+                    "clearances; hidden by default")
+        warnings = []
+        _add_clearance_references(doc, group, params, length, width, rim_z)
+        _lid_source, lid_clearance = _lid_clearance(params)
+        if lid_clearance is None and mode != "Lid Panel":
+            warnings.append(
+                "Closed-lid clearance is unknown. The orange case-rim plane is "
+                "shown, but no space above it is treated as usable.")
+        if mode == "Case Blank":
+            warnings.append(
+                "Editable blank created as the positive solid of the usable case "
+                "interior (the case negative) after configured clearances. Add your "
+                "own pockets, walls, or other features before treating it as a "
+                "finished printable insert.")
         if mode == "Lid Panel":
-            reference.Note = (
-                "Verified preset or user-measured lid-panel envelope; hidden by default")
-        else:
-            reference.Note = (
-                "Measured custom or synthetic preset envelope after configured "
-                "clearances; hidden by default")
-    warnings = []
-    _add_clearance_references(doc, group, params, length, width, rim_z)
-    _lid_source, lid_clearance = _lid_clearance(params)
-    if lid_clearance is None and mode != "Lid Panel":
-        warnings.append(
-            "Closed-lid clearance is unknown. The orange case-rim plane is "
-            "shown, but no space above it is treated as usable.")
-    if mode == "Case Blank":
-        warnings.append(
-            "Editable blank created as the positive solid of the usable case "
-            "interior (the case negative) after configured clearances. Add your "
-            "own pockets, walls, or other features before treating it as a "
-            "finished printable insert.")
-    if mode == "Lid Panel":
-        if model:
+            if model:
+                warnings.append(
+                    "Verified lid-panel envelope applied. Mounting bosses and hole "
+                    "positions are not assumed; measure them before printing.")
+            else:
+                warnings.append(
+                    "Using the custom measured lid-panel envelope. Verify the "
+                    "physical lid and mounting points before printing.")
+        elif model:
+            verification = model.get("_verification", {})
             warnings.append(
-                "Verified lid-panel envelope applied. Mounting bosses and hole "
-                "positions are not assumed; measure them before printing.")
+                "%s applied. Bundled presets are synthetic demonstrations, not fit "
+                "claims; replace them with physical measurements before printing." %
+                str(verification.get("label") or "Stored preset geometry"))
+        if mode == "Case Blank":
+            result_obj = _add_shape(
+                doc, group, result_name, result_label, result)
+            result_obj.addProperty("App::PropertyString", "Usage", "Generator")
+            result_obj.Usage = (
+                "Usable case-interior solid after fit clearances. Edit it with "
+                "FreeCAD Part or Part Design tools, or use it to crop custom geometry.")
+        elif mode == "SVG Cutout":
+            _add_shape(doc, group, "SVGCutout", "SVG Cutout Tool", cutter, False)
+            result_obj = _add_shape(
+                doc, group, result_name, result_label, result)
+            if open_count:
+                warnings.append("Ignored %d unsupported open SVG path(s)." % open_count)
+        elif mode == "Dividers":
+            result_obj = _add_shape(
+                doc, group, result_name, result_label, result)
+        elif mode == "Lid Panel":
+            _add_shape(doc, group, "MountingSlots", "Mounting Slots and Holes", cutter, False)
+            result_obj = _add_shape(
+                doc, group, result_name, result_label, result)
+        print_objects = [result_obj]
+        if bool(params.get("split_for_bed", False)):
+            if len(split_shapes) > 1:
+                try:
+                    result_obj.ViewObject.Visibility = False
+                except Exception:
+                    pass
+                result_obj.Label += " (uncut assembly reference)"
+                print_objects = []
+                for index, part_shape in enumerate(split_shapes, 1):
+                    print_objects.append(_add_shape(
+                        doc, group, "PrintPart%02d" % index,
+                        "Print Part %02d" % index, part_shape))
+                warnings.append("Split into %d bed-sized parts with straight butt seams; exported files are numbered. Join the printed sections after printing." %
+                                len(print_objects))
         else:
-            warnings.append(
-                "Using the custom measured lid-panel envelope. Verify the "
-                "physical lid and mounting points before printing.")
-    elif model:
-        verification = model.get("_verification", {})
-        warnings.append(
-            "%s applied. Bundled presets are synthetic demonstrations, not fit "
-            "claims; replace them with physical measurements before printing." %
-            str(verification.get("label") or "Stored preset geometry"))
-    if mode == "Case Blank":
-        result_obj = _add_shape(
-            doc, group, result_name, result_label, result)
-        result_obj.addProperty("App::PropertyString", "Usage", "Generator")
-        result_obj.Usage = (
-            "Usable case-interior solid after fit clearances. Edit it with "
-            "FreeCAD Part or Part Design tools, or use it to crop custom geometry.")
-    elif mode == "SVG Cutout":
-        _add_shape(doc, group, "SVGCutout", "SVG Cutout Tool", cutter, False)
-        result_obj = _add_shape(
-            doc, group, result_name, result_label, result)
-        if open_count:
-            warnings.append("Ignored %d unsupported open SVG path(s)." % open_count)
-    elif mode == "Dividers":
-        result_obj = _add_shape(
-            doc, group, result_name, result_label, result)
-    elif mode == "Lid Panel":
-        _add_shape(doc, group, "MountingSlots", "Mounting Slots and Holes", cutter, False)
-        result_obj = _add_shape(
-            doc, group, result_name, result_label, result)
-    print_objects = [result_obj]
-    if bool(params.get("split_for_bed", False)):
-        if len(split_shapes) > 1:
-            try:
-                result_obj.ViewObject.Visibility = False
-            except Exception:
-                pass
-            result_obj.Label += " (uncut assembly reference)"
-            print_objects = []
-            for index, part_shape in enumerate(split_shapes, 1):
-                print_objects.append(_add_shape(
-                    doc, group, "PrintPart%02d" % index,
-                    "Print Part %02d" % index, part_shape))
-            warnings.append("Split into %d bed-sized parts with straight butt seams; exported files are numbered. Join the printed sections after printing." %
-                            len(print_objects))
-    else:
-        if bbox.XLength > usable_x + 0.01 or bbox.YLength > usable_y + 0.01:
-            warnings.append("Footprint %.1f x %.1f mm exceeds the usable %.1f x %.1f mm printer area. Enable 'Split into bed-sized parts when needed'." %
-                            (bbox.XLength, bbox.YLength, usable_x, usable_y))
-    params_obj = _add_parameter_object(
-        doc, group, params, [item.Name for item in print_objects])
-    params_obj.addProperty("App::PropertyStringList", "Warnings", "Generator")
-    params_obj.Warnings = warnings
-    doc.recompute()
-    return {
-        "document": doc.Name,
-        "result": print_objects[0].Name,
-        "results": [item.Name for item in print_objects],
-        "parts": len(print_objects),
-        "mode": mode,
-        "valid": all(item.Shape.isValid() for item in print_objects),
-        "solids": sum(len(item.Shape.Solids) for item in print_objects),
-        "volume": result_obj.Shape.Volume,
-        "bounds": [bbox.XLength, bbox.YLength, bbox.ZLength],
-        "warnings": warnings,
-    }
+            if bbox.XLength > usable_x + 0.01 or bbox.YLength > usable_y + 0.01:
+                warnings.append("Footprint %.1f x %.1f mm exceeds the usable %.1f x %.1f mm printer area. Enable 'Split into bed-sized parts when needed'." %
+                                (bbox.XLength, bbox.YLength, usable_x, usable_y))
+        params_obj = _add_parameter_object(
+            doc, group, params, [item.Name for item in print_objects])
+        params_obj.addProperty("App::PropertyStringList", "Warnings", "Generator")
+        params_obj.Warnings = warnings
+        doc.recompute()
+        return {
+            "document": doc.Name,
+            "result": print_objects[0].Name,
+            "results": [item.Name for item in print_objects],
+            "parts": len(print_objects),
+            "mode": mode,
+            "valid": all(item.Shape.isValid() for item in print_objects),
+            "solids": sum(len(item.Shape.Solids) for item in print_objects),
+            "volume": result_obj.Shape.Volume,
+            "bounds": [bbox.XLength, bbox.YLength, bbox.ZLength],
+            "warnings": warnings,
+        }
 
 
 def _resolve_export_names(available_names, selected_names=None):
@@ -2948,11 +2979,84 @@ def active_result(doc=None):
 
 
 def _numbered_export_paths(path, count):
+    if count < 1:
+        raise RuntimeError("No printable generated parts are available to export.")
     if count == 1:
         return [path]
     root, extension = os.path.splitext(path)
     return ["%s_part_%02d%s" % (root, index, extension)
             for index in range(1, count + 1)]
+
+
+def export_paths(path, doc=None, selected_names=None):
+    """Return the actual destinations so callers can confirm every overwrite."""
+    objects = active_results(doc, selected_names=selected_names)
+    return _numbered_export_paths(os.fspath(path), len(objects))
+
+
+def _check_export_destinations(paths, overwrite):
+    for path in paths:
+        if os.path.isdir(path):
+            raise IsADirectoryError("Export destination is a directory: %s" % path)
+    collisions = [path for path in paths if os.path.lexists(path)]
+    if collisions and not overwrite:
+        raise FileExistsError(
+            "Export files already exist; confirm replacement of these files: %s" %
+            ", ".join(collisions))
+
+
+def _write_export_batch(objects, paths, write_part, overwrite=False):
+    """Stage a complete export, restoring prior files if replacement fails."""
+    _check_export_destinations(paths, overwrite)
+    parent = os.path.dirname(os.path.abspath(paths[0]))
+    staging = tempfile.mkdtemp(prefix=".caseinsert-export-", dir=parent)
+    keep_recovery = False
+    backups = {}
+    replaced = []
+    try:
+        staged = []
+        for obj, output in zip(objects, paths):
+            candidate = os.path.join(staging, os.path.basename(output))
+            write_part(obj, candidate)
+            if not os.path.isfile(candidate) or os.path.getsize(candidate) == 0:
+                raise RuntimeError("Export produced no file for %s" % output)
+            staged.append(candidate)
+
+        # Recheck after expensive meshing: a destination may have appeared
+        # while the export was being prepared.
+        _check_export_destinations(paths, overwrite)
+        backup_dir = os.path.join(staging, "previous")
+        os.mkdir(backup_dir)
+        for output in paths:
+            if os.path.lexists(output):
+                backup = os.path.join(backup_dir, os.path.basename(output))
+                shutil.copy2(output, backup, follow_symlinks=False)
+                backups[output] = backup
+        try:
+            for candidate, output in zip(staged, paths):
+                os.replace(candidate, output)
+                replaced.append(output)
+        except BaseException as export_error:
+            recovery_errors = []
+            for output in reversed(replaced):
+                try:
+                    if output in backups:
+                        os.replace(backups[output], output)
+                    else:
+                        os.unlink(output)
+                except OSError as recovery_error:
+                    recovery_errors.append(str(recovery_error))
+            if recovery_errors:
+                keep_recovery = True
+                raise RuntimeError(
+                    "Export replacement failed and some files could not be restored. "
+                    "Recovery copies are in %s: %s" %
+                    (backup_dir, "; ".join(recovery_errors))) from export_error
+            raise
+    finally:
+        if not keep_recovery:
+            shutil.rmtree(staging)
+    return paths[0] if len(paths) == 1 else paths
 
 
 def _shape_at_origin(shape):
@@ -2962,12 +3066,14 @@ def _shape_at_origin(shape):
     return placed
 
 
-def export_stl(path, doc=None, selected_names=None):
+def export_stl(path, doc=None, selected_names=None, overwrite=False):
+    """Export selected parts; existing files require explicit overwrite=True."""
     import Mesh
     import MeshPart
     objects = active_results(doc, selected_names=selected_names)
-    paths = _numbered_export_paths(path, len(objects))
-    for obj, output in zip(objects, paths):
+    paths = _numbered_export_paths(os.fspath(path), len(objects))
+
+    def write_part(obj, output):
         shape = _shape_at_origin(obj.Shape)
         mesh = MeshPart.meshFromShape(Shape=shape, LinearDeflection=0.15,
                                       AngularDeflection=math.radians(15.0), Relative=False)
@@ -3015,15 +3121,18 @@ def export_stl(path, doc=None, selected_names=None):
                 raise RuntimeError("STL tessellation is not a closed solid")
             mesh = welded
         mesh.write(output)
-    return paths[0] if len(paths) == 1 else paths
+    return _write_export_batch(objects, paths, write_part, overwrite=overwrite)
 
 
-def export_step(path, doc=None, selected_names=None):
+def export_step(path, doc=None, selected_names=None, overwrite=False):
+    """Export selected parts; existing files require explicit overwrite=True."""
     objects = active_results(doc, selected_names=selected_names)
-    paths = _numbered_export_paths(path, len(objects))
-    for obj, output in zip(objects, paths):
+    paths = _numbered_export_paths(os.fspath(path), len(objects))
+
+    def write_part(obj, output):
         _shape_at_origin(obj.Shape).exportStep(output)
-    return paths[0] if len(paths) == 1 else paths
+
+    return _write_export_batch(objects, paths, write_part, overwrite=overwrite)
 
 
 def save_fcstd(path, doc=None):
@@ -3043,6 +3152,33 @@ def _qt_modules():
     return QtCore, QtGui, QtWidgets
 
 
+def _overlay_edited_controls(base, initial, current):
+    """Keep stored precision and noneditable fields until a control changes."""
+    if isinstance(base, dict) and isinstance(current, dict):
+        result = json.loads(json.dumps(base))
+        initial = initial if isinstance(initial, dict) else {}
+        for key, value in current.items():
+            if key in base and key in initial:
+                result[key] = _overlay_edited_controls(
+                    base[key], initial[key], value)
+            else:
+                result[key] = json.loads(json.dumps(value))
+        return result
+    if current == initial:
+        return json.loads(json.dumps(base))
+    # Objects are identified by their stable IDs, not their list positions.
+    if (isinstance(base, list) and isinstance(initial, list) and
+            isinstance(current, list) and
+            all(isinstance(item, dict) and "id" in item
+                for items in (base, initial, current) for item in items)):
+        original = {item["id"]: item for item in initial}
+        stored = {item["id"]: item for item in base}
+        return [_overlay_edited_controls(
+            stored.get(item["id"], {}), original.get(item["id"], {}), item)
+            for item in current]
+    return json.loads(json.dumps(current))
+
+
 class BaySizeEditor(object):
     """Scrollable editor for ordered locked or flexible compartment sizes."""
 
@@ -3053,6 +3189,7 @@ class BaySizeEditor(object):
         self.QtWidgets = QtWidgets
         self.item_name = item_name
         self.entries = []
+        self.changed = None
         self.widget = QtWidgets.QGroupBox(title)
         outer = QtWidgets.QVBoxLayout(self.widget)
         note = QtWidgets.QLabel(
@@ -3103,6 +3240,8 @@ class BaySizeEditor(object):
             lambda index, control=size: control.setEnabled(index == self.LOCKED))
         mode.setCurrentIndex(self.FLEXIBLE if flexible else self.LOCKED)
         size.setEnabled(not flexible)
+        mode.currentIndexChanged.connect(self._notify_changed)
+        size.valueChanged.connect(self._notify_changed)
         remove.clicked.connect(
             lambda _checked=False, target=row_widget: self.remove_bay(target))
         row.addWidget(number)
@@ -3114,7 +3253,12 @@ class BaySizeEditor(object):
         self.entries.append(entry)
         self.entry_layout.addWidget(row_widget)
         self._renumber()
+        self._notify_changed()
         return entry
+
+    def _notify_changed(self, *_args):
+        if self.changed is not None:
+            self.changed()
 
     def remove_bay(self, row_widget):
         if len(self.entries) <= 1:
@@ -3126,6 +3270,7 @@ class BaySizeEditor(object):
                 row_widget.deleteLater()
                 break
         self._renumber()
+        self._notify_changed()
 
     def _renumber(self):
         for index, entry in enumerate(self.entries, 1):
@@ -3358,11 +3503,88 @@ class CaseInsertDialog(object):
         self._updating_inspector = False
         self._layout_snapshot = None
         self._layout_unplaced = []
+        self._document = App.ActiveDocument
+        self._document_name = self._document.Name if self._document else None
+        self._source_record = self._document_record(self._document)
+        self._base_project = {}
+        self._initial_project_controls = {}
+        self._base_legacy_params = {}
+        self._initial_legacy_controls = {}
+        self._generation_signature = None
+        self._generated_controls_signature = None
+        self._geometry_snapshot = None
+        self._generated_has_parts = False
+        self._load_error = None
+        self._hydrating = True
         self._build_ui()
         self._load_case()
         self._load_active_project()
+        self._hydrating = False
         self._refresh_export_parts()
+        if self._generation_signature is not None:
+            self._generated_controls_signature = self._controls_signature()
+            self._geometry_snapshot = self._geometry_state(self._document)
+        self._connect_export_changes()
         self._mode_changed()
+        self._set_document_title()
+
+    @staticmethod
+    def _document_record(doc):
+        if doc is None:
+            return None
+        root = _find_project_group(doc)
+        params = _find_parameter_object(doc)
+        return (
+            str(getattr(root, "ProjectJSON", "") or ""),
+            str(getattr(params, "ProjectJSON", "") or ""),
+            str(getattr(params, "ParameterJSON", "") or ""),
+            tuple(getattr(params, "GeneratedResults", []) or []),
+            str(getattr(params, "GeneratedResult", "") or ""),
+        )
+
+    def _set_document_title(self):
+        target = self._document_name or "new document"
+        self.dialog.setWindowTitle("Case Insert Generator — %s" % target)
+
+    def _bound_document(self, create=False):
+        if self._load_error:
+            raise RuntimeError(self._load_error)
+        if self._document is None:
+            if not create:
+                raise RuntimeError("Generate a model in this dialog first.")
+            self._document = App.newDocument("CaseInsertGenerator")
+            self._document_name = self._document.Name
+            self._source_record = self._document_record(self._document)
+            self._set_document_title()
+        elif App.listDocuments().get(self._document_name) is not self._document:
+            raise RuntimeError(
+                "The document for this dialog was closed. Reopen the generator "
+                "on the document you want to edit.")
+        if self._document_record(self._document) != self._source_record:
+            raise RuntimeError(
+                "This document's generator project changed outside this dialog. "
+                "Reopen the generator to load its current settings.")
+        return self._document
+
+    @staticmethod
+    def _geometry_state(doc):
+        """Serialize generated geometry only at load/generation/action boundaries."""
+        params = _find_parameter_object(doc)
+        names = list(getattr(params, "GeneratedResults", []) or [])
+        if not names and not getattr(params, "GeneratedResult", ""):
+            return ()
+        return tuple(
+            (obj.Name,
+             hashlib.sha256(obj.Shape.copy().exportBrepToString().encode("utf-8")).hexdigest(),
+             tuple(obj.Placement.toMatrix().A))
+            for obj in active_results(doc))
+
+    def _assert_geometry_unchanged(self, doc):
+        if (self._geometry_snapshot is not None and
+                self._geometry_state(doc) != self._geometry_snapshot):
+            raise RuntimeError(
+                "Generated geometry changed outside this dialog. Reopen the "
+                "generator to review the current document before continuing.")
 
     def _spin(self, value=0.0, minimum=0.0, maximum=2000.0, decimals=2, suffix=" mm"):
         widget = self.QtWidgets.QDoubleSpinBox()
@@ -4137,10 +4359,55 @@ class CaseInsertDialog(object):
             self.generate_button.setText(
                 "Generate / update printable model" if (not lid_mode or printable)
                 else "Preview configuration (print blocked)")
+        self._update_export_availability()
+
+    def _connect_export_changes(self):
+        """Refresh cheap control-state checks; CAD validation happens on actions."""
+        QW = self.QtWidgets
+        for widget in self.dialog.findChildren(QW.QDoubleSpinBox):
+            widget.valueChanged.connect(self._update_export_availability)
+        for widget in self.dialog.findChildren(QW.QSpinBox):
+            widget.valueChanged.connect(self._update_export_availability)
+        for widget in self.dialog.findChildren(QW.QSlider):
+            widget.valueChanged.connect(self._update_export_availability)
+        for widget in self.dialog.findChildren(QW.QComboBox):
+            widget.currentIndexChanged.connect(self._update_export_availability)
+        for widget in self.dialog.findChildren(QW.QCheckBox):
+            widget.toggled.connect(self._update_export_availability)
+        for widget in self.dialog.findChildren(QW.QLineEdit):
+            widget.textChanged.connect(self._update_export_availability)
+        self.project_canvas.scene.changed.connect(self._update_export_availability)
+        self.column_bays.changed = self._update_export_availability
+        self.row_bays.changed = self._update_export_availability
+
+    def _controls_signature(self):
+        mode = self.mode_combo.currentIndex()
+        controls = (self._project_controls() if mode in (0, 3)
+                    else self._legacy_controls())
+        return json.dumps([mode, controls], sort_keys=True)
+
+    def _update_export_availability(self, *_args):
+        if self._updating_inspector:
+            return
+        enabled = False
+        reason = "Generate or save the current model before exporting."
+        if not self._hydrating and not self._updating_inspector:
+            try:
+                self._bound_document()
+                enabled = (
+                    self._generated_has_parts and
+                    self._generated_controls_signature == self._controls_signature())
+                if enabled:
+                    reason = "Export the checked parts from %s." % self._document_name
+                elif self._generated_has_parts:
+                    reason = "Settings changed. Generate or save the updated model before exporting."
+            except Exception as exc:
+                reason = str(exc)
         for name in ("export_stl_button", "export_step_button"):
             button = getattr(self, name, None)
             if button is not None:
-                button.setEnabled(not lid_mode or printable)
+                button.setEnabled(enabled)
+                button.setToolTip(reason)
 
     def _update_canvas_case(self, *_args):
         if not hasattr(self, "project_canvas"):
@@ -4173,7 +4440,7 @@ class CaseInsertDialog(object):
     def _update_layer_budget(self, *_args):
         if not hasattr(self, "layer_budget"):
             return
-        floor = 2.4
+        floor = float(self._base_project.get("layers", {}).get("floor_mm", 2.4))
         usable = max(0.0, self.insert_depth.value() - self.bottom_clearance.value())
         if str(self.containment_mode.currentData()) == "shared_panel":
             usable = max(
@@ -4194,8 +4461,12 @@ class CaseInsertDialog(object):
         self.layer_budget.setText(text)
 
     def _next_object_id(self, object_type):
-        self._object_counter += 1
-        return "%s-%02d" % (object_type.replace("_", "-"), self._object_counter)
+        while True:
+            self._object_counter += 1
+            candidate = "%s-%02d" % (
+                object_type.replace("_", "-"), self._object_counter)
+            if candidate not in self.project_canvas.objects:
+                return candidate
 
     def _default_composer_object(self, object_type):
         object_id = self._next_object_id(object_type)
@@ -4393,17 +4664,10 @@ class CaseInsertDialog(object):
             self.project_canvas.update_selected({"locked": not bool(obj.get("locked", False))})
             self._canvas_selection_changed(self.project_canvas.selected_object())
 
-    def _project_spec(self, lid_panel_enabled=None, compute_layout_inset=True):
+    def _project_controls(self):
         source = str(self.lid_clearance_source.currentData())
         current_objects = self.project_canvas.to_objects()
-        preserved_unplaced = []
-        if (self._layout_snapshot is not None and
-                current_objects == self._layout_snapshot):
-            preserved_unplaced = list(self._layout_unplaced)
-        else:
-            self._layout_snapshot = None
-            self._layout_unplaced = []
-        spec = {
+        return {
             "schema_version": 1,
             "case": {
                 "case_model": self._selected_case_name(),
@@ -4429,7 +4693,6 @@ class CaseInsertDialog(object):
             "layers": {
                 "enabled": self.layers_enabled.isChecked(),
                 "ratio": self.layer_ratio.value() / 100.0,
-                "floor_mm": 2.4,
             },
             "containment": {
                 "mode": str(self.containment_mode.currentData()),
@@ -4444,16 +4707,28 @@ class CaseInsertDialog(object):
             },
             "objects": current_objects,
         }
+
+    def _project_spec(self, lid_panel_enabled=None, compute_layout_inset=True):
+        controls = self._project_controls()
+        spec = _overlay_edited_controls(
+            self._base_project, self._initial_project_controls, controls)
+        spec["layers"].setdefault("floor_mm", 2.4)
         spec["lid_panel"]["enabled"] = (
             self.mode_combo.currentIndex() == 3
             if lid_panel_enabled is None else bool(lid_panel_enabled))
-        if preserved_unplaced:
-            spec["unplaced"] = preserved_unplaced
+        if (self._layout_snapshot is not None and
+                controls["objects"] == self._layout_snapshot):
+            spec["unplaced"] = list(self._layout_unplaced)
+        else:
+            spec.pop("unplaced", None)
+            self._layout_snapshot = None
+            self._layout_unplaced = []
         spec = _project_with_svg_dimensions(spec)
         if compute_layout_inset:
             params = _project_case_params(spec)
             inset = _required_project_layout_inset(spec, params)
-            spec["case"]["layout_inset"] = round(inset, 3)
+            spec["case"]["layout_inset"] = max(
+                float(spec["case"].get("layout_inset", 0.0)), round(inset, 3))
         else:
             spec["case"]["layout_inset"] = 0.0
         usable_length = max(
@@ -4564,13 +4839,23 @@ class CaseInsertDialog(object):
             self.case_combo.setCurrentIndex(index)
 
     def _load_active_project(self):
-        """Hydrate the composer when the active FCStd contains ProjectJSON."""
-        try:
-            project = load_project()
-        except RuntimeError:
+        """Hydrate this dialog's document, including exposed legacy modes."""
+        doc = self._document
+        if doc is None:
             return False
+        try:
+            root = _find_project_group(doc)
+            params = _find_parameter_object(doc)
+            if not (getattr(root, "ProjectJSON", "") or
+                    getattr(params, "ProjectJSON", "")):
+                raw = getattr(params, "ParameterJSON", "")
+                if not raw:
+                    return False
+                return self._load_legacy_parameters(json.loads(str(raw)))
+            project = load_project(doc)
         except Exception as exc:
-            self.status.setText("Stored project could not be loaded: %s" % exc)
+            self._load_error = "Stored project could not be loaded: %s" % exc
+            self.status.setText(self._load_error)
             return False
         case = project["case"]
         self._set_case_selection(case["case_model"])
@@ -4674,12 +4959,93 @@ class CaseInsertDialog(object):
                 project["layout_strategy"])
             if layout_index >= 0:
                 self.layout_strategy.setCurrentIndex(layout_index)
+        self._base_project = json.loads(json.dumps(project))
+        self._initial_project_controls = self._project_controls()
         self._update_canvas_case()
         self._update_layer_budget()
         self._panel_pattern_changed()
         self._update_lid_generation_gate()
+        self._generation_signature = self._request_signature(
+            (self.mode_combo.currentIndex(), project))
         self.status.setText(
-            "Loaded editable project from %s" % App.ActiveDocument.Name)
+            "Loaded editable project from %s" % self._document_name)
+        return True
+
+    def _load_legacy_parameters(self, params):
+        if not isinstance(params, dict):
+            raise ValueError("Stored insert parameters must be a JSON object")
+        stored = json.loads(json.dumps(params))
+        # These are the optional defaults used by generate_insert,
+        # build_divider_insert, build_svg_insert, and _lid_clearance.
+        # Numeric values read by _as_float are required, not defaults.
+        optional = {
+            "case_model": "Custom Case", "insert_type": "SVG Cutout",
+            "rows": 1, "columns": 1, "divider_layout": "Equal grid",
+            "bed_x": DEFAULT_BED, "bed_y": DEFAULT_BED, "bed_margin": 5.0,
+            "split_for_bed": False, "through_cut": False, "invert_svg": False,
+            "lid_clearance_source": "unknown", "lid_clearance": 0.0,
+        }
+        params = dict(optional, **params)
+        modes = {"SVG Cutout": 1, "Dividers": 2, "Case Blank": 4}
+        mode = params.get("insert_type")
+        if mode not in modes:
+            raise ValueError("Stored legacy insert mode is not supported: %s" % mode)
+        self._set_case_selection(params.get("case_model", "Custom Case"))
+        numeric = {
+            "internal_length": self.internal_l, "internal_width": self.internal_w,
+            "insert_depth": self.insert_depth, "corner_radius": self.corner_radius,
+            "side_clearance": self.side_clearance, "bottom_clearance": self.bottom_clearance,
+            "taper_allowance": self.taper_allowance, "bed_x": self.bed_x,
+            "bed_y": self.bed_y, "bed_margin": self.bed_margin,
+            "lid_length": self.lid_length, "lid_width": self.lid_width,
+            "lid_clearance": self.lid_clearance,
+            "svg_scale": self.svg_scale, "svg_x": self.svg_x, "svg_y": self.svg_y,
+            "svg_rotation": self.svg_rotation, "cutout_depth": self.cutout_depth,
+            "svg_clearance": self.svg_clearance, "rows": self.rows,
+            "columns": self.columns, "base_thickness": self.base_thickness,
+            "outer_wall": self.outer_wall, "divider_wall": self.divider_wall,
+            "divider_height": self.divider_height,
+        }
+        for key, widget in numeric.items():
+            if key in params and params[key] is not None:
+                value = float(params[key])
+                if not math.isfinite(value):
+                    raise ValueError("Stored %s must be finite" % key)
+                widget.setValue(int(value) if key in ("rows", "columns") else value)
+        for key, widget in (("lid_envelope_source", self.lid_envelope_source),
+                            ("lid_clearance_source", self.lid_clearance_source)):
+            if key in params:
+                index = widget.findData(params[key])
+                if index < 0:
+                    raise ValueError("Stored %s is not supported" % key)
+                widget.setCurrentIndex(index)
+        # Setting the source can clear an unknown value, so restore a known one last.
+        if params.get("lid_clearance_source") in ("measured", "cad-derived"):
+            self.lid_clearance.setValue(float(params.get("lid_clearance") or 0.0))
+        for key, widget in (("split_for_bed", self.split_for_bed),
+                            ("through_cut", self.through_cut),
+                            ("invert_svg", self.invert_svg)):
+            if key in params:
+                widget.setChecked(bool(params[key]))
+        self.svg_path.setText(str(params.get("svg_path", "")))
+        layouts = ("Equal grid", "Rows only", "Columns only", "Measured bay sizes")
+        layout = params.get("divider_layout", "Equal grid")
+        if layout not in layouts:
+            raise ValueError("Stored divider layout is not supported: %s" % layout)
+        self.div_layout.setCurrentIndex(layouts.index(layout))
+        for key, editor in (("length_bays", self.column_bays),
+                            ("width_bays", self.row_bays)):
+            if params.get(key):
+                entries = []
+                for token in str(params[key]).split(","):
+                    token = token.strip()
+                    entries.append((50.0 if token == "*" else float(token), token == "*"))
+                editor.set_bays(entries)
+        self.mode_combo.setCurrentIndex(modes[mode])
+        self._base_legacy_params = stored
+        self._initial_legacy_controls = self._legacy_controls()
+        self._generation_signature = self._request_signature(self._current_request())
+        self.status.setText("Loaded editable %s from %s" % (mode, self._document_name))
         return True
 
     def _load_case(self):
@@ -4815,7 +5181,7 @@ class CaseInsertDialog(object):
         if filename:
             self.svg_path.setText(filename)
 
-    def _params(self):
+    def _legacy_controls(self):
         insert_modes = ("Project Composer", "SVG Cutout", "Dividers", "Lid Panel", "Case Blank")
         divider_layouts = ("Equal grid", "Rows only", "Columns only",
                            "Measured bay sizes")
@@ -4850,6 +5216,17 @@ class CaseInsertDialog(object):
             "lid_dimensions_verified": self._lid_mode_available(),
         }
 
+    def _params(self):
+        controls = self._legacy_controls()
+        if (self._initial_legacy_controls and
+                controls == self._initial_legacy_controls):
+            # An unchanged API-authored file keeps its omitted optional keys,
+            # instead of converting unrelated GUI starter values to settings.
+            return json.loads(json.dumps(self._base_legacy_params))
+        return _overlay_edited_controls(
+            self._base_legacy_params, self._initial_legacy_controls,
+            controls)
+
     def _refresh_export_parts(self, *_args, **kwargs):
         """Refresh the generated-part checklist without losing user choices."""
         select_all = bool(kwargs.get("select_all", False))
@@ -4862,11 +5239,12 @@ class CaseInsertDialog(object):
             if item.checkState() == self.QtCore.Qt.Checked:
                 old_checked.add(name)
         try:
-            objects = active_results()
+            objects = active_results(self._bound_document())
         except RuntimeError:
             objects = []
+        self._generated_has_parts = bool(objects)
         new_names = [obj.Name for obj in objects]
-        keep_checks = bool(old_names) and old_names == new_names and not select_all
+        keep_checks = bool(old_names) and not select_all
         self.export_parts.blockSignals(True)
         self.export_parts.clear()
         for obj in objects:
@@ -4881,6 +5259,7 @@ class CaseInsertDialog(object):
             self.export_parts.addItem(item)
         self.export_parts.blockSignals(False)
         self._export_part_selection_changed()
+        self._update_export_availability()
 
     def _set_export_parts_checked(self, checked):
         state = (self.QtCore.Qt.Checked if checked
@@ -4924,22 +5303,63 @@ class CaseInsertDialog(object):
         self.status.setText("Error: %s" % exc)
         self.QtWidgets.QMessageBox.warning(self.dialog, "Case Insert Generator", str(exc))
 
+    def _current_request(self):
+        mode = self.mode_combo.currentIndex()
+        if mode in (0, 3):
+            spec = self._project_spec(lid_panel_enabled=mode == 3)
+            return mode, _project_module().validate_project(spec)
+        return mode, _resolved_params(self._params())
+
+    @staticmethod
+    def _request_signature(request):
+        mode, settings = request
+        settings = json.loads(json.dumps(settings))
+        if mode in (0, 3):
+            for key in ("result", "results", "parts", "warnings", "lid_panel_report"):
+                settings.pop(key, None)
+            settings.setdefault("unplaced", [])
+            # The composer placement inset does not shape the lid-panel model.
+            if mode == 3:
+                settings.get("case", {}).pop("layout_inset", None)
+        return json.dumps([mode, settings], sort_keys=True)
+
+    def _generate_current(self, request):
+        mode, settings = request
+        doc = self._bound_document(create=True)
+        self._assert_geometry_unchanged(doc)
+        if mode == 0:
+            authored = dict(settings)
+            # Auto Layout resolves canvas positions when explicitly applied.
+            # A strategy saved by an earlier API call is historical here,
+            # not an instruction to repack the user's current manual edits.
+            authored.pop("layout_strategy", None)
+            report = generate_project(authored, document=doc)
+        elif mode == 3:
+            budget = _project_module().lid_panel_height_budget(settings)
+            report = (generate_lid_panel_project(settings, document=doc)
+                      if budget["printable"]
+                      else preview_lid_panel_project(settings, document=doc))
+        else:
+            report = generate_insert(settings, document=doc)
+        self._source_record = self._document_record(doc)
+        if mode in (0, 3):
+            self._base_project = load_project(doc)
+            self._initial_project_controls = self._project_controls()
+        else:
+            params = _find_parameter_object(doc)
+            self._base_legacy_params = json.loads(str(params.ParameterJSON))
+            self._initial_legacy_controls = self._legacy_controls()
+        self._generation_signature = self._request_signature(self._current_request())
+        self._generated_controls_signature = self._controls_signature()
+        self._geometry_snapshot = self._geometry_state(doc)
+        self._refresh_export_parts()
+        if not isinstance(report, dict) and hasattr(report, "to_mapping"):
+            report = report.to_mapping()
+        return report
+
     def _generate(self):
         try:
-            mode_index = self.mode_combo.currentIndex()
-            if mode_index == 0:
-                report = generate_project(
-                    self._project_spec(lid_panel_enabled=False))
-            elif mode_index == 3:
-                spec = self._project_spec(lid_panel_enabled=True)
-                budget = _project_module().lid_panel_height_budget(spec)
-                report = (generate_lid_panel_project(spec)
-                          if budget["printable"]
-                          else preview_lid_panel_project(spec))
-            else:
-                report = generate_insert(self._params())
-            if not isinstance(report, dict) and hasattr(report, "to_mapping"):
-                report = report.to_mapping()
+            report = self._generate_current(self._current_request())
             if report["parts"]:
                 message = "Generated %d printable part%s: valid geometry, %.0f mm³ total" % (
                     report["parts"], "" if report["parts"] == 1 else "s", report["volume"])
@@ -4949,7 +5369,6 @@ class CaseInsertDialog(object):
                     "printable STL/STEP generation remains blocked.")
             if report["warnings"]:
                 message += "\n" + "\n".join(report["warnings"])
-            self._refresh_export_parts(select_all=True)
             self.status.setText(message)
             self._fit_view()
         except Exception as exc:
@@ -4957,10 +5376,14 @@ class CaseInsertDialog(object):
 
     def _fit_view(self):
         try:
-            Gui.activeDocument().activeView().viewAxonometric()
-            Gui.activeDocument().activeView().fitAll()
+            import FreeCADGui as Gui
+            doc = self._bound_document()
+            view = Gui.getDocument(doc.Name).activeView()
+            view.viewAxonometric()
+            view.fitAll()
         except Exception as exc:
-            self.status.setText("Fit View unavailable: %s" % exc)
+            previous = self.status.text()
+            self.status.setText("%s\nFit View unavailable: %s" % (previous, exc))
 
     def _save_path(self, title, pattern, suffix):
         filename = self.QtWidgets.QFileDialog.getSaveFileName(self.dialog, title, macro_directory(), pattern)[0]
@@ -4968,67 +5391,82 @@ class CaseInsertDialog(object):
             filename += suffix
         return filename
 
-    def _export_stl(self):
+    def _confirm_export_overwrite(self, paths):
+        box = self.QtWidgets.QMessageBox(self.dialog)
+        box.setWindowTitle("Replace existing export files?")
+        box.setIcon(self.QtWidgets.QMessageBox.Warning)
+        box.setText("%d export file%s already exist." %
+                    (len(paths), "" if len(paths) == 1 else "s"))
+        box.setInformativeText(
+            "Replace these files? Open Details to inspect the complete destination list.")
+        box.setDetailedText("\n".join(paths))
+        box.setStandardButtons(self.QtWidgets.QMessageBox.Yes | self.QtWidgets.QMessageBox.No)
+        box.setDefaultButton(self.QtWidgets.QMessageBox.No)
+        return box.exec_() == self.QtWidgets.QMessageBox.Yes
+
+    def _export_model(self, format_name, exporter, pattern, suffix):
         try:
-            if self.mode_combo.currentIndex() == 3:
-                spec = self._project_spec(
-                    lid_panel_enabled=True, compute_layout_inset=False)
-                spec["objects"] = []
-                budget = _project_module().lid_panel_height_budget(spec)
+            doc = self._bound_document()
+            self._assert_geometry_unchanged(doc)
+            request = self._current_request()
+            if request[0] == 3:
+                budget = _project_module().lid_panel_height_budget(request[1])
                 if not budget["printable"]:
                     self.status.setText(
-                        "STL export blocked: %s" % " ".join(budget["reasons"]))
+                        "%s export blocked: %s" %
+                        (format_name, " ".join(budget["reasons"])))
                     return
+            if self._request_signature(request) != self._generation_signature:
+                raise RuntimeError(
+                    "Settings changed. Generate or save the updated model before exporting.")
             selected_names = self._selected_export_names()
-            path = self._save_path("Export STL", "STL mesh (*.stl)", ".stl")
+            path = self._save_path("Export %s" % format_name, pattern, suffix)
             if path:
-                outputs = export_stl(
-                    path, selected_names=selected_names)
+                destinations = export_paths(path, doc=doc, selected_names=selected_names)
+                collisions = [name for name in destinations if os.path.lexists(name)]
+                if collisions and not self._confirm_export_overwrite(collisions):
+                    self.status.setText("Export cancelled; existing files were kept.")
+                    return
+                # A file dialog is modeless with respect to document events.
+                # Recheck ownership after the picker and collision confirmation.
+                self._bound_document()
+                self._assert_geometry_unchanged(doc)
+                if self._request_signature(self._current_request()) != self._generation_signature:
+                    raise RuntimeError("Settings changed while choosing export files. Generate again.")
+                outputs = exporter(path, doc=doc, selected_names=selected_names,
+                                   overwrite=bool(collisions))
                 count = len(outputs) if isinstance(outputs, list) else 1
-                self.status.setText("Exported %d STL file%s" %
-                                    (count, "" if count == 1 else "s"))
+                self.status.setText("Exported %d %s file%s from %s" %
+                                    (count, format_name, "" if count == 1 else "s",
+                                     self._document_name))
         except Exception as exc:
             self._show_error(exc)
 
+    def _export_stl(self):
+        self._export_model("STL", export_stl, "STL mesh (*.stl)", ".stl")
+
     def _export_step(self):
-        try:
-            if self.mode_combo.currentIndex() == 3:
-                spec = self._project_spec(
-                    lid_panel_enabled=True, compute_layout_inset=False)
-                spec["objects"] = []
-                budget = _project_module().lid_panel_height_budget(spec)
-                if not budget["printable"]:
-                    self.status.setText(
-                        "STEP export blocked: %s" % " ".join(budget["reasons"]))
-                    return
-            selected_names = self._selected_export_names()
-            path = self._save_path("Export STEP", "STEP model (*.step *.stp)", ".step")
-            if path:
-                outputs = export_step(
-                    path, selected_names=selected_names)
-                count = len(outputs) if isinstance(outputs, list) else 1
-                self.status.setText("Exported %d STEP file%s" %
-                                    (count, "" if count == 1 else "s"))
-        except Exception as exc:
-            self._show_error(exc)
+        self._export_model("STEP", export_step, "STEP model (*.step *.stp)", ".step")
 
     def _save_fcstd(self):
         try:
-            if self.mode_combo.currentIndex() == 3:
-                spec = self._project_spec(lid_panel_enabled=True)
-                budget = _project_module().lid_panel_height_budget(spec)
-                if budget["printable"]:
-                    generate_lid_panel_project(spec)
-                else:
-                    preview_lid_panel_project(spec)
-                self._refresh_export_parts(select_all=True)
             path = self._save_path("Save FreeCAD document", "FreeCAD document (*.FCStd)", ".FCStd")
             if path:
-                save_fcstd(path); self.status.setText("Saved %s" % path)
+                request = self._current_request()
+                if self._request_signature(request) != self._generation_signature:
+                    self._generate_current(request)
+                doc = self._bound_document()
+                self._assert_geometry_unchanged(doc)
+                save_fcstd(path, doc=doc)
+                self.status.setText("Saved current settings and model to %s" % path)
         except Exception as exc:
             self._show_error(exc)
 
     def _reset(self):
+        self._base_project = {}
+        self._initial_project_controls = {}
+        self._base_legacy_params = {}
+        self._initial_legacy_controls = {}
         self._set_case_selection("Custom Case")
         self.internal_l.setValue(300.0); self.internal_w.setValue(200.0); self.insert_depth.setValue(40.0)
         self.corner_radius.setValue(8.0); self.side_clearance.setValue(1.0)

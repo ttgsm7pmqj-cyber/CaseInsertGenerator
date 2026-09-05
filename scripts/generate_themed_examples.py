@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import importlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 import re
 import runpy
@@ -20,13 +21,14 @@ from typing import Any, Mapping
 
 import FreeCAD as App
 
-from scripts.artifact_audit import scan_fcstd, text_findings
+from scripts.artifact_audit import (
+    EXAMPLE_LICENSE, EXAMPLE_LICENSE_URL, scan_fcstd, text_findings,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / "examples" / "themed-packs"
 CATALOG_PATH = ROOT / "scripts" / "themed_example_catalog.py"
-RUN_DATE = "2026-09-04"
 EXPECTED_COUNT = 23
 RENDER_WIDTH = 1400
 RENDER_HEIGHT = 1000
@@ -199,7 +201,7 @@ def _safe_error_message(error: Exception, root: Path, destination: Path) -> str:
 
 
 def _portable_text_scan(fcstd_path: Path) -> dict[str, Any]:
-    return scan_fcstd(fcstd_path)
+    return scan_fcstd(fcstd_path, require_example_license=True)
 
 
 def _audit_results(objects: list[Any]) -> list[dict[str, Any]]:
@@ -923,7 +925,7 @@ def generate_themed_examples(
     previous_active = App.ActiveDocument.Name if App.ActiveDocument else None
     manifest: dict[str, Any] = {
         "schema_version": 1,
-        "generated_on": RUN_DATE,
+        "generated_on": datetime.now(timezone.utc).date().isoformat(),
         "generator": "Case Insert Generator",
         "source_sha256": _source_hashes(root),
         "source_inputs_tracked": True,
@@ -963,6 +965,8 @@ def generate_themed_examples(
             project = project_model.validate_project(pack["project"])
             source_ids = [item["id"] for item in project["objects"]]
             generated_document = _new_document(number)
+            generated_document.License = EXAMPLE_LICENSE
+            generated_document.LicenseURL = EXAMPLE_LICENSE_URL
             App.setActiveDocument(generated_document.Name)
             generation = namespace["generate_project"](project, document=generated_document)
             result = _result_mapping(generation)

@@ -6,6 +6,9 @@ import importlib
 import json
 import math
 import os
+import shutil
+import tempfile
+from contextlib import contextmanager
 
 import FreeCAD as App
 import Part
@@ -381,7 +384,31 @@ def _safe_remove_group(doc):
     doc.recompute()
 
 
+@contextmanager
+def _generation_transaction(doc, label):
+    """Replace a project atomically, enabling document Undo after success."""
+    if doc.HasPendingTransaction:
+        raise RuntimeError(
+            "Finish the active FreeCAD operation before generating an insert.")
+    # Headless callers can start with Undo disabled. Transactions must record
+    # changes there too so an abort restores the last editable project.
+    undo_was_enabled = bool(doc.UndoMode)
+    if not undo_was_enabled:
+        doc.UndoMode = 1
+    doc.openTransaction(label)
+    try:
+        yield
+        doc.commitTransaction()
+    except BaseException:
+        doc.abortTransaction()
+        doc.recompute()
+        if not undo_was_enabled:
+            doc.UndoMode = 0
+        raise
+
+
 def _add_parameter_object(doc, group, params, result_name):
+    parameter_json = json.dumps(params, sort_keys=True, allow_nan=False)
     obj = _mark_generator_object(
         doc.addObject("App::FeaturePython", PARAM_OBJECT), "parameters")
     group.addObject(obj)
@@ -396,7 +423,7 @@ def _add_parameter_object(doc, group, params, result_name):
     obj.addProperty("App::PropertyStringList", "GeneratedResults", "Generator")
     obj.GeneratedResults = result_names
     obj.addProperty("App::PropertyString", "ParameterJSON", "Generator")
-    obj.ParameterJSON = json.dumps(params, sort_keys=True)
+    obj.ParameterJSON = parameter_json
     length_keys = (
         "internal_length", "internal_width", "insert_depth", "corner_radius",
         "lid_length", "lid_width", "lid_clearance",
@@ -2315,68 +2342,72 @@ def generate_project(spec, document=None):
                      part_shape.BoundBox.YLength, usable_x, usable_y))
             printable_parts.append((part_name, part_label, part_shape))
 
-    # All expensive geometry and validation completed before replacing the
-    # prior generated group, so a failed boolean leaves the last good result.
+    # Validate metadata serialization before touching the last good result.
+    # Result names are assigned by FreeCAD during the transaction below.
+    json.dumps(normalized, sort_keys=True, allow_nan=False)
+    json.dumps(params, sort_keys=True, allow_nan=False)
     doc = document or App.ActiveDocument
     if doc is None:
         doc = App.newDocument("CaseInsertProject")
-    _safe_remove_group(doc)
-    group = _mark_generator_object(
-        doc.addObject("App::DocumentObjectGroup", PROJECT_GROUP), "project-root")
-    group.Label = "Case Insert Generator"
-    print_objects = [
-        _add_shape(doc, group, name, label, shape)
-        for name, label, shape in printable_parts
-    ]
+    with _generation_transaction(doc, "Generate composed case insert"):
+        _safe_remove_group(doc)
+        group = _mark_generator_object(
+            doc.addObject("App::DocumentObjectGroup", PROJECT_GROUP), "project-root")
+        group.Label = "Case Insert Generator"
+        print_objects = [
+            _add_shape(doc, group, name, label, shape)
+            for name, label, shape in printable_parts
+        ]
 
-    result_names = [item.Name for item in print_objects]
-    normalized["result"] = result_names[0] if result_names else ""
-    normalized["results"] = result_names
-    normalized["parts"] = len(result_names)
-    normalized["warnings"] = list(warnings)
-    normalized["unplaced"] = list(normalized.get("unplaced", []))
+        result_names = [item.Name for item in print_objects]
+        normalized["result"] = result_names[0] if result_names else ""
+        normalized["results"] = result_names
+        normalized["parts"] = len(result_names)
+        normalized["warnings"] = list(warnings)
+        normalized["unplaced"] = list(normalized.get("unplaced", []))
 
-    length, width, _depth, _radius = _effective_case(params)
-    model = _case_model(params)
-    rim_z = ((float(model.get("bottom_depth") or model["internal_depth"]) -
-              _as_float(params, "bottom_clearance", 0.0)) if model
-             else total_height)
-    _add_clearance_references(doc, group, params, length, width, rim_z)
-    params_obj = _add_parameter_object(
-        doc, group, params, result_names)
-    params_obj.addProperty("App::PropertyInteger", "SchemaVersion", "Project")
-    params_obj.SchemaVersion = 1
-    params_obj.addProperty("App::PropertyString", "ProjectJSON", "Project")
-    params_obj.ProjectJSON = json.dumps(normalized, sort_keys=True)
-    params_obj.addProperty("App::PropertyStringList", "Warnings", "Project")
-    params_obj.Warnings = warnings
-    group.addProperty("App::PropertyInteger", "SchemaVersion", "Project")
-    group.SchemaVersion = 1
-    group.addProperty("App::PropertyString", "ProjectJSON", "Project")
-    group.ProjectJSON = params_obj.ProjectJSON
-    doc.recompute()
-    report = {
-        "document": doc.Name,
-        "results": result_names,
-        "parts": len(print_objects),
-        "mode": "Project Composer",
-        "valid": all(item.Shape.isValid() for item in print_objects),
-        "solids": sum(len(item.Shape.Solids) for item in print_objects),
-        "volume": sum(item.Shape.Volume for item in print_objects),
-        "warnings": warnings,
-        "unplaced": list(normalized.get("unplaced", [])),
-        "project": normalized,
-    }
-    result_type = getattr(model_api, "GenerationResult", None)
-    return result_type.from_mapping(report) if result_type and hasattr(result_type, "from_mapping") else report
+        length, width, _depth, _radius = _effective_case(params)
+        model = _case_model(params)
+        rim_z = ((float(model.get("bottom_depth") or model["internal_depth"]) -
+                  _as_float(params, "bottom_clearance", 0.0)) if model
+                 else total_height)
+        _add_clearance_references(doc, group, params, length, width, rim_z)
+        params_obj = _add_parameter_object(
+            doc, group, params, result_names)
+        params_obj.addProperty("App::PropertyInteger", "SchemaVersion", "Project")
+        params_obj.SchemaVersion = 1
+        params_obj.addProperty("App::PropertyString", "ProjectJSON", "Project")
+        params_obj.ProjectJSON = json.dumps(normalized, sort_keys=True, allow_nan=False)
+        params_obj.addProperty("App::PropertyStringList", "Warnings", "Project")
+        params_obj.Warnings = warnings
+        group.addProperty("App::PropertyInteger", "SchemaVersion", "Project")
+        group.SchemaVersion = 1
+        group.addProperty("App::PropertyString", "ProjectJSON", "Project")
+        group.ProjectJSON = params_obj.ProjectJSON
+        doc.recompute()
+        report = {
+            "document": doc.Name,
+            "results": result_names,
+            "parts": len(print_objects),
+            "mode": "Project Composer",
+            "valid": all(item.Shape.isValid() for item in print_objects),
+            "solids": sum(len(item.Shape.Solids) for item in print_objects),
+            "volume": sum(item.Shape.Volume for item in print_objects),
+            "warnings": warnings,
+            "unplaced": list(normalized.get("unplaced", [])),
+            "project": normalized,
+        }
+        result_type = getattr(model_api, "GenerationResult", None)
+        return result_type.from_mapping(report) if result_type and hasattr(result_type, "from_mapping") else report
 
 
 def _store_schema_project(doc, group, project, params, result_names, warnings):
+    project_json = json.dumps(project, sort_keys=True, allow_nan=False)
     params_obj = _add_parameter_object(doc, group, params, result_names)
     params_obj.addProperty("App::PropertyInteger", "SchemaVersion", "Project")
     params_obj.SchemaVersion = 1
     params_obj.addProperty("App::PropertyString", "ProjectJSON", "Project")
-    params_obj.ProjectJSON = json.dumps(project, sort_keys=True)
+    params_obj.ProjectJSON = project_json
     params_obj.addProperty("App::PropertyStringList", "Warnings", "Project")
     params_obj.Warnings = list(warnings)
     group.addProperty("App::PropertyInteger", "SchemaVersion", "Project")
@@ -2439,29 +2470,6 @@ def preview_lid_panel_project(spec, document=None):
                 "lid-keepout-reference",
             ))
 
-    doc = document or App.ActiveDocument
-    if doc is None:
-        doc = App.newDocument("CaseInsertLidPanelPreview")
-    _safe_remove_group(doc)
-    group = _mark_generator_object(
-        doc.addObject("App::DocumentObjectGroup", PROJECT_GROUP), "project-root")
-    group.Label = "Case Insert Generator — Lid Panel Preview"
-    for name, label, shape, role in preview_shapes:
-        obj = _add_shape(doc, group, name, label, shape, role=role)
-        try:
-            if role == "lid-panel-preview":
-                obj.ViewObject.ShapeColor = (0.25, 0.65, 0.90)
-                obj.ViewObject.Transparency = 35
-            elif role == "lid-retainer-preview":
-                obj.ViewObject.ShapeColor = (0.95, 0.48, 0.12)
-                obj.ViewObject.Transparency = 20
-            elif role == "lid-keepout-reference":
-                obj.ViewObject.ShapeColor = (0.90, 0.30, 0.20)
-                obj.ViewObject.Transparency = 30
-            else:
-                obj.ViewObject.ShapeColor = (0.75, 0.75, 0.75)
-        except Exception:
-            pass
     params = _project_case_params(project)
     params["insert_type"] = "Lid Panel Preview"
     project["result"] = ""
@@ -2478,27 +2486,54 @@ def preview_lid_panel_project(spec, document=None):
             dict(preview_package["plan"]) if preview_package else None),
     }
     project.setdefault("verification", {})["physical_fit"] = False
-    _store_schema_project(doc, group, project, params, [], warnings)
-    doc.recompute()
-    report = {
-        "document": doc.Name,
-        "results": [],
-        "parts": 0,
-        "mode": "Lid Panel Preview",
-        "valid": True,
-        "solids": 0,
-        "volume": 0.0,
-        "warnings": warnings,
-        "unplaced": [],
-        "project": project,
-        "printable": False,
-        "height_budget": budget,
-        "pattern_bounds": (
-            list(preview_package["pattern_bounds"]) if preview_package else []),
-    }
-    result_type = getattr(model_api, "GenerationResult", None)
-    return (result_type.from_mapping(report)
-            if result_type and hasattr(result_type, "from_mapping") else report)
+    json.dumps(project, sort_keys=True, allow_nan=False)
+    json.dumps(params, sort_keys=True, allow_nan=False)
+
+    doc = document or App.ActiveDocument
+    if doc is None:
+        doc = App.newDocument("CaseInsertLidPanelPreview")
+    with _generation_transaction(doc, "Preview lid panel"):
+        _safe_remove_group(doc)
+        group = _mark_generator_object(
+            doc.addObject("App::DocumentObjectGroup", PROJECT_GROUP), "project-root")
+        group.Label = "Case Insert Generator — Lid Panel Preview"
+        for name, label, shape, role in preview_shapes:
+            obj = _add_shape(doc, group, name, label, shape, role=role)
+            try:
+                if role == "lid-panel-preview":
+                    obj.ViewObject.ShapeColor = (0.25, 0.65, 0.90)
+                    obj.ViewObject.Transparency = 35
+                elif role == "lid-retainer-preview":
+                    obj.ViewObject.ShapeColor = (0.95, 0.48, 0.12)
+                    obj.ViewObject.Transparency = 20
+                elif role == "lid-keepout-reference":
+                    obj.ViewObject.ShapeColor = (0.90, 0.30, 0.20)
+                    obj.ViewObject.Transparency = 30
+                else:
+                    obj.ViewObject.ShapeColor = (0.75, 0.75, 0.75)
+            except Exception:
+                pass
+        _store_schema_project(doc, group, project, params, [], warnings)
+        doc.recompute()
+        report = {
+            "document": doc.Name,
+            "results": [],
+            "parts": 0,
+            "mode": "Lid Panel Preview",
+            "valid": True,
+            "solids": 0,
+            "volume": 0.0,
+            "warnings": warnings,
+            "unplaced": [],
+            "project": project,
+            "printable": False,
+            "height_budget": budget,
+            "pattern_bounds": (
+                list(preview_package["pattern_bounds"]) if preview_package else []),
+        }
+        result_type = getattr(model_api, "GenerationResult", None)
+        return (result_type.from_mapping(report)
+                if result_type and hasattr(result_type, "from_mapping") else report)
 
 
 def generate_lid_panel_project(spec, document=None):
@@ -2585,62 +2620,6 @@ def generate_lid_panel_project(spec, document=None):
         positioned_tools = package["tools"].copy()
         positioned_tools.translate(offset)
 
-    doc = document or App.ActiveDocument
-    if doc is None:
-        doc = App.newDocument("CaseInsertLidPanel")
-    _safe_remove_group(doc)
-    group = _mark_generator_object(
-        doc.addObject("App::DocumentObjectGroup", PROJECT_GROUP), "project-root")
-    group.Label = "Case Insert Generator — Inside-lid Panel"
-    lid_length = float(project["lid"]["length_mm"])
-    lid_width = float(project["lid"]["width_mm"])
-    lid_reference = _add_shape(
-        doc, group, "LidEnvelopeReference", "Evidenced lid-panel envelope",
-        Part.makePlane(lid_length, lid_width), role="lid-envelope-reference")
-    lid_reference.addProperty("App::PropertyString", "Evidence", "Clearance")
-    lid_reference.Evidence = "%s lid envelope; physical fit unverified" % (
-        project["lid"]["envelope_source"])
-    if positioned_tools is not None:
-        tools_obj = _add_shape(
-            doc, group, "LidPanelTools",
-            "Pattern, mounting, lift, and keep-out tools",
-            positioned_tools, False, role="construction-tool")
-        tools_obj.addProperty("App::PropertyInteger", "PatternCount", "Panel")
-        tools_obj.PatternCount = int(package["pattern_count"])
-
-    print_objects = []
-    if len(positioned_parts) == 1:
-        print_objects.append(_add_shape(
-            doc, group, "LidPanel", "Inside-lid equipment panel",
-            positioned_parts[0]))
-    else:
-        assembly = _add_shape(
-            doc, group, "LidPanelAssemblyReference",
-            "Inside-lid panel (uncut assembly reference)",
-            assembled_panel, False, role="assembly-reference")
-        assembly.addProperty("App::PropertyString", "Note", "Panel")
-        assembly.Note = "Non-exported reference; numbered keyed parts are the printable outputs"
-        for index, part in enumerate(positioned_parts, 1):
-            print_objects.append(_add_shape(
-                doc, group, "LidPanelPart%02d" % index,
-                "Inside-lid panel — keyed part %02d" % index, part))
-    for index, retainer in enumerate(positioned_retainers, 1):
-        print_objects.append(_add_shape(
-            doc, group, "LidPanelRetainer%02d" % index,
-            "Printable perimeter quarter-turn retainer %02d" % index,
-            retainer))
-    for obj in print_objects:
-        obj.addProperty("App::PropertyString", "PhysicalFit", "Verification")
-        obj.PhysicalFit = "unverified"
-        obj.addProperty("App::PropertyString", "PanelPattern", "Panel")
-        obj.PanelPattern = str(project["lid_panel"]["pattern"])
-
-    _add_clearance_references(doc, group, _project_case_params(project),
-                              lid_length, lid_width, 0.0)
-    result_names = [item.Name for item in print_objects]
-    project["result"] = result_names[0] if result_names else ""
-    project["results"] = result_names
-    project["parts"] = len(result_names)
     project["warnings"] = warnings
     project["unplaced"] = []
     project["lid_panel_report"] = {
@@ -2662,28 +2641,88 @@ def generate_lid_panel_project(spec, document=None):
         "panel_thickness": project["lid_panel"]["thickness_mm"],
         "payload_thickness": project["lid_panel"]["payload_thickness_mm"],
     })
-    _store_schema_project(doc, group, project, params, result_names, warnings)
-    doc.recompute()
-    report = {
-        "document": doc.Name,
-        "results": result_names,
-        "parts": len(result_names),
-        "mode": "Lid Panel",
-        "valid": all(item.Shape.isValid() for item in print_objects),
-        "solids": sum(len(item.Shape.Solids) for item in print_objects),
-        "volume": sum(item.Shape.Volume for item in print_objects),
-        "warnings": warnings,
-        "unplaced": [],
-        "project": project,
-        "printable": True,
-        "height_budget": budget,
-        "panel_plan": plan,
-        "pattern_bounds": package["pattern_bounds"],
-        "split": split_metadata,
-    }
-    result_type = getattr(model_api, "GenerationResult", None)
-    return (result_type.from_mapping(report)
-            if result_type and hasattr(result_type, "from_mapping") else report)
+    json.dumps(project, sort_keys=True, allow_nan=False)
+    json.dumps(params, sort_keys=True, allow_nan=False)
+
+    doc = document or App.ActiveDocument
+    if doc is None:
+        doc = App.newDocument("CaseInsertLidPanel")
+    with _generation_transaction(doc, "Generate lid panel"):
+        _safe_remove_group(doc)
+        group = _mark_generator_object(
+            doc.addObject("App::DocumentObjectGroup", PROJECT_GROUP), "project-root")
+        group.Label = "Case Insert Generator — Inside-lid Panel"
+        lid_length = float(project["lid"]["length_mm"])
+        lid_width = float(project["lid"]["width_mm"])
+        lid_reference = _add_shape(
+            doc, group, "LidEnvelopeReference", "Evidenced lid-panel envelope",
+            Part.makePlane(lid_length, lid_width), role="lid-envelope-reference")
+        lid_reference.addProperty("App::PropertyString", "Evidence", "Clearance")
+        lid_reference.Evidence = "%s lid envelope; physical fit unverified" % (
+            project["lid"]["envelope_source"])
+        if positioned_tools is not None:
+            tools_obj = _add_shape(
+                doc, group, "LidPanelTools",
+                "Pattern, mounting, lift, and keep-out tools",
+                positioned_tools, False, role="construction-tool")
+            tools_obj.addProperty("App::PropertyInteger", "PatternCount", "Panel")
+            tools_obj.PatternCount = int(package["pattern_count"])
+
+        print_objects = []
+        if len(positioned_parts) == 1:
+            print_objects.append(_add_shape(
+                doc, group, "LidPanel", "Inside-lid equipment panel",
+                positioned_parts[0]))
+        else:
+            assembly = _add_shape(
+                doc, group, "LidPanelAssemblyReference",
+                "Inside-lid panel (uncut assembly reference)",
+                assembled_panel, False, role="assembly-reference")
+            assembly.addProperty("App::PropertyString", "Note", "Panel")
+            assembly.Note = "Non-exported reference; numbered keyed parts are the printable outputs"
+            for index, part in enumerate(positioned_parts, 1):
+                print_objects.append(_add_shape(
+                    doc, group, "LidPanelPart%02d" % index,
+                    "Inside-lid panel — keyed part %02d" % index, part))
+        for index, retainer in enumerate(positioned_retainers, 1):
+            print_objects.append(_add_shape(
+                doc, group, "LidPanelRetainer%02d" % index,
+                "Printable perimeter quarter-turn retainer %02d" % index,
+                retainer))
+        for obj in print_objects:
+            obj.addProperty("App::PropertyString", "PhysicalFit", "Verification")
+            obj.PhysicalFit = "unverified"
+            obj.addProperty("App::PropertyString", "PanelPattern", "Panel")
+            obj.PanelPattern = str(project["lid_panel"]["pattern"])
+
+        _add_clearance_references(doc, group, _project_case_params(project),
+                                  lid_length, lid_width, 0.0)
+        result_names = [item.Name for item in print_objects]
+        project["result"] = result_names[0] if result_names else ""
+        project["results"] = result_names
+        project["parts"] = len(result_names)
+        _store_schema_project(doc, group, project, params, result_names, warnings)
+        doc.recompute()
+        report = {
+            "document": doc.Name,
+            "results": result_names,
+            "parts": len(result_names),
+            "mode": "Lid Panel",
+            "valid": all(item.Shape.isValid() for item in print_objects),
+            "solids": sum(len(item.Shape.Solids) for item in print_objects),
+            "volume": sum(item.Shape.Volume for item in print_objects),
+            "warnings": warnings,
+            "unplaced": [],
+            "project": project,
+            "printable": True,
+            "height_budget": budget,
+            "panel_plan": plan,
+            "pattern_bounds": package["pattern_bounds"],
+            "split": split_metadata,
+        }
+        result_type = getattr(model_api, "GenerationResult", None)
+        return (result_type.from_mapping(report)
+                if result_type and hasattr(result_type, "from_mapping") else report)
 
 
 def load_project(document=None):
@@ -2783,110 +2822,112 @@ def generate_insert(params, document=None):
 
     # Shape building and bed checks complete before the previous generated
     # group is replaced, so invalid input preserves the last good model.
+    json.dumps(params, sort_keys=True, allow_nan=False)
     if doc is None:
         doc = App.newDocument("CaseInsert")
-    _safe_remove_group(doc)
-    group = _mark_generator_object(
-        doc.addObject("App::DocumentObjectGroup", PROJECT_GROUP), "project-root")
-    group.Label = "Case Insert Generator"
-    # Other modes keep the usable case envelope as a hidden comparison object.
-    # Case Blank exposes that exact same solid directly, so avoid duplicating
-    # the envelope BRep in the saved FreeCAD document.
-    if mode != "Case Blank":
-        reference = _add_shape(doc, group, "CaseReference", "Case Reference",
-                               reference_shape, False)
-        reference.addProperty("App::PropertyString", "Note", "Reference")
+    with _generation_transaction(doc, "Generate case insert"):
+        _safe_remove_group(doc)
+        group = _mark_generator_object(
+            doc.addObject("App::DocumentObjectGroup", PROJECT_GROUP), "project-root")
+        group.Label = "Case Insert Generator"
+        # Other modes keep the usable case envelope as a hidden comparison object.
+        # Case Blank exposes that exact same solid directly, so avoid duplicating
+        # the envelope BRep in the saved FreeCAD document.
+        if mode != "Case Blank":
+            reference = _add_shape(doc, group, "CaseReference", "Case Reference",
+                                   reference_shape, False)
+            reference.addProperty("App::PropertyString", "Note", "Reference")
+            if mode == "Lid Panel":
+                reference.Note = (
+                    "Verified preset or user-measured lid-panel envelope; hidden by default")
+            else:
+                reference.Note = (
+                    "Measured custom or synthetic preset envelope after configured "
+                    "clearances; hidden by default")
+        warnings = []
+        _add_clearance_references(doc, group, params, length, width, rim_z)
+        _lid_source, lid_clearance = _lid_clearance(params)
+        if lid_clearance is None and mode != "Lid Panel":
+            warnings.append(
+                "Closed-lid clearance is unknown. The orange case-rim plane is "
+                "shown, but no space above it is treated as usable.")
+        if mode == "Case Blank":
+            warnings.append(
+                "Editable blank created as the positive solid of the usable case "
+                "interior (the case negative) after configured clearances. Add your "
+                "own pockets, walls, or other features before treating it as a "
+                "finished printable insert.")
         if mode == "Lid Panel":
-            reference.Note = (
-                "Verified preset or user-measured lid-panel envelope; hidden by default")
-        else:
-            reference.Note = (
-                "Measured custom or synthetic preset envelope after configured "
-                "clearances; hidden by default")
-    warnings = []
-    _add_clearance_references(doc, group, params, length, width, rim_z)
-    _lid_source, lid_clearance = _lid_clearance(params)
-    if lid_clearance is None and mode != "Lid Panel":
-        warnings.append(
-            "Closed-lid clearance is unknown. The orange case-rim plane is "
-            "shown, but no space above it is treated as usable.")
-    if mode == "Case Blank":
-        warnings.append(
-            "Editable blank created as the positive solid of the usable case "
-            "interior (the case negative) after configured clearances. Add your "
-            "own pockets, walls, or other features before treating it as a "
-            "finished printable insert.")
-    if mode == "Lid Panel":
-        if model:
+            if model:
+                warnings.append(
+                    "Verified lid-panel envelope applied. Mounting bosses and hole "
+                    "positions are not assumed; measure them before printing.")
+            else:
+                warnings.append(
+                    "Using the custom measured lid-panel envelope. Verify the "
+                    "physical lid and mounting points before printing.")
+        elif model:
+            verification = model.get("_verification", {})
             warnings.append(
-                "Verified lid-panel envelope applied. Mounting bosses and hole "
-                "positions are not assumed; measure them before printing.")
+                "%s applied. Bundled presets are synthetic demonstrations, not fit "
+                "claims; replace them with physical measurements before printing." %
+                str(verification.get("label") or "Stored preset geometry"))
+        if mode == "Case Blank":
+            result_obj = _add_shape(
+                doc, group, result_name, result_label, result)
+            result_obj.addProperty("App::PropertyString", "Usage", "Generator")
+            result_obj.Usage = (
+                "Usable case-interior solid after fit clearances. Edit it with "
+                "FreeCAD Part or Part Design tools, or use it to crop custom geometry.")
+        elif mode == "SVG Cutout":
+            _add_shape(doc, group, "SVGCutout", "SVG Cutout Tool", cutter, False)
+            result_obj = _add_shape(
+                doc, group, result_name, result_label, result)
+            if open_count:
+                warnings.append("Ignored %d unsupported open SVG path(s)." % open_count)
+        elif mode == "Dividers":
+            result_obj = _add_shape(
+                doc, group, result_name, result_label, result)
+        elif mode == "Lid Panel":
+            _add_shape(doc, group, "MountingSlots", "Mounting Slots and Holes", cutter, False)
+            result_obj = _add_shape(
+                doc, group, result_name, result_label, result)
+        print_objects = [result_obj]
+        if bool(params.get("split_for_bed", False)):
+            if len(split_shapes) > 1:
+                try:
+                    result_obj.ViewObject.Visibility = False
+                except Exception:
+                    pass
+                result_obj.Label += " (uncut assembly reference)"
+                print_objects = []
+                for index, part_shape in enumerate(split_shapes, 1):
+                    print_objects.append(_add_shape(
+                        doc, group, "PrintPart%02d" % index,
+                        "Print Part %02d" % index, part_shape))
+                warnings.append("Split into %d bed-sized parts with straight butt seams; exported files are numbered. Join the printed sections after printing." %
+                                len(print_objects))
         else:
-            warnings.append(
-                "Using the custom measured lid-panel envelope. Verify the "
-                "physical lid and mounting points before printing.")
-    elif model:
-        verification = model.get("_verification", {})
-        warnings.append(
-            "%s applied. Bundled presets are synthetic demonstrations, not fit "
-            "claims; replace them with physical measurements before printing." %
-            str(verification.get("label") or "Stored preset geometry"))
-    if mode == "Case Blank":
-        result_obj = _add_shape(
-            doc, group, result_name, result_label, result)
-        result_obj.addProperty("App::PropertyString", "Usage", "Generator")
-        result_obj.Usage = (
-            "Usable case-interior solid after fit clearances. Edit it with "
-            "FreeCAD Part or Part Design tools, or use it to crop custom geometry.")
-    elif mode == "SVG Cutout":
-        _add_shape(doc, group, "SVGCutout", "SVG Cutout Tool", cutter, False)
-        result_obj = _add_shape(
-            doc, group, result_name, result_label, result)
-        if open_count:
-            warnings.append("Ignored %d unsupported open SVG path(s)." % open_count)
-    elif mode == "Dividers":
-        result_obj = _add_shape(
-            doc, group, result_name, result_label, result)
-    elif mode == "Lid Panel":
-        _add_shape(doc, group, "MountingSlots", "Mounting Slots and Holes", cutter, False)
-        result_obj = _add_shape(
-            doc, group, result_name, result_label, result)
-    print_objects = [result_obj]
-    if bool(params.get("split_for_bed", False)):
-        if len(split_shapes) > 1:
-            try:
-                result_obj.ViewObject.Visibility = False
-            except Exception:
-                pass
-            result_obj.Label += " (uncut assembly reference)"
-            print_objects = []
-            for index, part_shape in enumerate(split_shapes, 1):
-                print_objects.append(_add_shape(
-                    doc, group, "PrintPart%02d" % index,
-                    "Print Part %02d" % index, part_shape))
-            warnings.append("Split into %d bed-sized parts with straight butt seams; exported files are numbered. Join the printed sections after printing." %
-                            len(print_objects))
-    else:
-        if bbox.XLength > usable_x + 0.01 or bbox.YLength > usable_y + 0.01:
-            warnings.append("Footprint %.1f x %.1f mm exceeds the usable %.1f x %.1f mm printer area. Enable 'Split into bed-sized parts when needed'." %
-                            (bbox.XLength, bbox.YLength, usable_x, usable_y))
-    params_obj = _add_parameter_object(
-        doc, group, params, [item.Name for item in print_objects])
-    params_obj.addProperty("App::PropertyStringList", "Warnings", "Generator")
-    params_obj.Warnings = warnings
-    doc.recompute()
-    return {
-        "document": doc.Name,
-        "result": print_objects[0].Name,
-        "results": [item.Name for item in print_objects],
-        "parts": len(print_objects),
-        "mode": mode,
-        "valid": all(item.Shape.isValid() for item in print_objects),
-        "solids": sum(len(item.Shape.Solids) for item in print_objects),
-        "volume": result_obj.Shape.Volume,
-        "bounds": [bbox.XLength, bbox.YLength, bbox.ZLength],
-        "warnings": warnings,
-    }
+            if bbox.XLength > usable_x + 0.01 or bbox.YLength > usable_y + 0.01:
+                warnings.append("Footprint %.1f x %.1f mm exceeds the usable %.1f x %.1f mm printer area. Enable 'Split into bed-sized parts when needed'." %
+                                (bbox.XLength, bbox.YLength, usable_x, usable_y))
+        params_obj = _add_parameter_object(
+            doc, group, params, [item.Name for item in print_objects])
+        params_obj.addProperty("App::PropertyStringList", "Warnings", "Generator")
+        params_obj.Warnings = warnings
+        doc.recompute()
+        return {
+            "document": doc.Name,
+            "result": print_objects[0].Name,
+            "results": [item.Name for item in print_objects],
+            "parts": len(print_objects),
+            "mode": mode,
+            "valid": all(item.Shape.isValid() for item in print_objects),
+            "solids": sum(len(item.Shape.Solids) for item in print_objects),
+            "volume": result_obj.Shape.Volume,
+            "bounds": [bbox.XLength, bbox.YLength, bbox.ZLength],
+            "warnings": warnings,
+        }
 
 
 def _resolve_export_names(available_names, selected_names=None):
@@ -2948,11 +2989,84 @@ def active_result(doc=None):
 
 
 def _numbered_export_paths(path, count):
+    if count < 1:
+        raise RuntimeError("No printable generated parts are available to export.")
     if count == 1:
         return [path]
     root, extension = os.path.splitext(path)
     return ["%s_part_%02d%s" % (root, index, extension)
             for index in range(1, count + 1)]
+
+
+def export_paths(path, doc=None, selected_names=None):
+    """Return the actual destinations so callers can confirm every overwrite."""
+    objects = active_results(doc, selected_names=selected_names)
+    return _numbered_export_paths(os.fspath(path), len(objects))
+
+
+def _check_export_destinations(paths, overwrite):
+    for path in paths:
+        if os.path.isdir(path):
+            raise IsADirectoryError("Export destination is a directory: %s" % path)
+    collisions = [path for path in paths if os.path.lexists(path)]
+    if collisions and not overwrite:
+        raise FileExistsError(
+            "Export files already exist; confirm replacement of these files: %s" %
+            ", ".join(collisions))
+
+
+def _write_export_batch(objects, paths, write_part, overwrite=False):
+    """Stage a complete export, restoring prior files if replacement fails."""
+    _check_export_destinations(paths, overwrite)
+    parent = os.path.dirname(os.path.abspath(paths[0]))
+    staging = tempfile.mkdtemp(prefix=".caseinsert-export-", dir=parent)
+    keep_recovery = False
+    backups = {}
+    replaced = []
+    try:
+        staged = []
+        for obj, output in zip(objects, paths):
+            candidate = os.path.join(staging, os.path.basename(output))
+            write_part(obj, candidate)
+            if not os.path.isfile(candidate) or os.path.getsize(candidate) == 0:
+                raise RuntimeError("Export produced no file for %s" % output)
+            staged.append(candidate)
+
+        # Recheck after expensive meshing: a destination may have appeared
+        # while the export was being prepared.
+        _check_export_destinations(paths, overwrite)
+        backup_dir = os.path.join(staging, "previous")
+        os.mkdir(backup_dir)
+        for output in paths:
+            if os.path.lexists(output):
+                backup = os.path.join(backup_dir, os.path.basename(output))
+                shutil.copy2(output, backup, follow_symlinks=False)
+                backups[output] = backup
+        try:
+            for candidate, output in zip(staged, paths):
+                os.replace(candidate, output)
+                replaced.append(output)
+        except BaseException as export_error:
+            recovery_errors = []
+            for output in reversed(replaced):
+                try:
+                    if output in backups:
+                        os.replace(backups[output], output)
+                    else:
+                        os.unlink(output)
+                except OSError as recovery_error:
+                    recovery_errors.append(str(recovery_error))
+            if recovery_errors:
+                keep_recovery = True
+                raise RuntimeError(
+                    "Export replacement failed and some files could not be restored. "
+                    "Recovery copies are in %s: %s" %
+                    (backup_dir, "; ".join(recovery_errors))) from export_error
+            raise
+    finally:
+        if not keep_recovery:
+            shutil.rmtree(staging)
+    return paths[0] if len(paths) == 1 else paths
 
 
 def _shape_at_origin(shape):
@@ -2962,12 +3076,14 @@ def _shape_at_origin(shape):
     return placed
 
 
-def export_stl(path, doc=None, selected_names=None):
+def export_stl(path, doc=None, selected_names=None, overwrite=False):
+    """Export selected parts; existing files require explicit overwrite=True."""
     import Mesh
     import MeshPart
     objects = active_results(doc, selected_names=selected_names)
-    paths = _numbered_export_paths(path, len(objects))
-    for obj, output in zip(objects, paths):
+    paths = _numbered_export_paths(os.fspath(path), len(objects))
+
+    def write_part(obj, output):
         shape = _shape_at_origin(obj.Shape)
         mesh = MeshPart.meshFromShape(Shape=shape, LinearDeflection=0.15,
                                       AngularDeflection=math.radians(15.0), Relative=False)
@@ -3015,15 +3131,18 @@ def export_stl(path, doc=None, selected_names=None):
                 raise RuntimeError("STL tessellation is not a closed solid")
             mesh = welded
         mesh.write(output)
-    return paths[0] if len(paths) == 1 else paths
+    return _write_export_batch(objects, paths, write_part, overwrite=overwrite)
 
 
-def export_step(path, doc=None, selected_names=None):
+def export_step(path, doc=None, selected_names=None, overwrite=False):
+    """Export selected parts; existing files require explicit overwrite=True."""
     objects = active_results(doc, selected_names=selected_names)
-    paths = _numbered_export_paths(path, len(objects))
-    for obj, output in zip(objects, paths):
+    paths = _numbered_export_paths(os.fspath(path), len(objects))
+
+    def write_part(obj, output):
         _shape_at_origin(obj.Shape).exportStep(output)
-    return paths[0] if len(paths) == 1 else paths
+
+    return _write_export_batch(objects, paths, write_part, overwrite=overwrite)
 
 
 def save_fcstd(path, doc=None):

@@ -3152,6 +3152,33 @@ def _qt_modules():
     return QtCore, QtGui, QtWidgets
 
 
+def _overlay_edited_controls(base, initial, current):
+    """Keep stored precision and noneditable fields until a control changes."""
+    if isinstance(base, dict) and isinstance(current, dict):
+        result = json.loads(json.dumps(base))
+        initial = initial if isinstance(initial, dict) else {}
+        for key, value in current.items():
+            if key in base and key in initial:
+                result[key] = _overlay_edited_controls(
+                    base[key], initial[key], value)
+            else:
+                result[key] = json.loads(json.dumps(value))
+        return result
+    if current == initial:
+        return json.loads(json.dumps(base))
+    # Objects are identified by their stable IDs, not their list positions.
+    if (isinstance(base, list) and isinstance(initial, list) and
+            isinstance(current, list) and
+            all(isinstance(item, dict) and "id" in item
+                for items in (base, initial, current) for item in items)):
+        original = {item["id"]: item for item in initial}
+        stored = {item["id"]: item for item in base}
+        return [_overlay_edited_controls(
+            stored.get(item["id"], {}), original.get(item["id"], {}), item)
+            for item in current]
+    return json.loads(json.dumps(current))
+
+
 class BaySizeEditor(object):
     """Scrollable editor for ordered locked or flexible compartment sizes."""
 
@@ -3162,6 +3189,7 @@ class BaySizeEditor(object):
         self.QtWidgets = QtWidgets
         self.item_name = item_name
         self.entries = []
+        self.changed = None
         self.widget = QtWidgets.QGroupBox(title)
         outer = QtWidgets.QVBoxLayout(self.widget)
         note = QtWidgets.QLabel(
@@ -3212,6 +3240,8 @@ class BaySizeEditor(object):
             lambda index, control=size: control.setEnabled(index == self.LOCKED))
         mode.setCurrentIndex(self.FLEXIBLE if flexible else self.LOCKED)
         size.setEnabled(not flexible)
+        mode.currentIndexChanged.connect(self._notify_changed)
+        size.valueChanged.connect(self._notify_changed)
         remove.clicked.connect(
             lambda _checked=False, target=row_widget: self.remove_bay(target))
         row.addWidget(number)
@@ -3223,7 +3253,12 @@ class BaySizeEditor(object):
         self.entries.append(entry)
         self.entry_layout.addWidget(row_widget)
         self._renumber()
+        self._notify_changed()
         return entry
+
+    def _notify_changed(self, *_args):
+        if self.changed is not None:
+            self.changed()
 
     def remove_bay(self, row_widget):
         if len(self.entries) <= 1:
@@ -3235,6 +3270,7 @@ class BaySizeEditor(object):
                 row_widget.deleteLater()
                 break
         self._renumber()
+        self._notify_changed()
 
     def _renumber(self):
         for index, entry in enumerate(self.entries, 1):
@@ -3467,11 +3503,66 @@ class CaseInsertDialog(object):
         self._updating_inspector = False
         self._layout_snapshot = None
         self._layout_unplaced = []
+        self._document = App.ActiveDocument
+        self._document_name = self._document.Name if self._document else None
+        self._source_record = self._document_record(self._document)
+        self._base_project = {}
+        self._initial_project_controls = {}
+        self._base_legacy_params = {}
+        self._initial_legacy_controls = {}
+        self._generation_signature = None
+        self._generated_controls_signature = None
+        self._generated_has_parts = False
+        self._load_error = None
+        self._hydrating = True
         self._build_ui()
         self._load_case()
         self._load_active_project()
+        self._hydrating = False
         self._refresh_export_parts()
+        if self._generation_signature is not None:
+            self._generated_controls_signature = self._controls_signature()
+        self._connect_export_changes()
         self._mode_changed()
+        self._set_document_title()
+
+    @staticmethod
+    def _document_record(doc):
+        if doc is None:
+            return None
+        root = _find_project_group(doc)
+        params = _find_parameter_object(doc)
+        return (
+            str(getattr(root, "ProjectJSON", "") or ""),
+            str(getattr(params, "ProjectJSON", "") or ""),
+            str(getattr(params, "ParameterJSON", "") or ""),
+            tuple(getattr(params, "GeneratedResults", []) or []),
+            str(getattr(params, "GeneratedResult", "") or ""),
+        )
+
+    def _set_document_title(self):
+        target = self._document_name or "new document"
+        self.dialog.setWindowTitle("Case Insert Generator — %s" % target)
+
+    def _bound_document(self, create=False):
+        if self._load_error:
+            raise RuntimeError(self._load_error)
+        if self._document is None:
+            if not create:
+                raise RuntimeError("Generate a model in this dialog first.")
+            self._document = App.newDocument("CaseInsertGenerator")
+            self._document_name = self._document.Name
+            self._source_record = self._document_record(self._document)
+            self._set_document_title()
+        elif App.listDocuments().get(self._document_name) is not self._document:
+            raise RuntimeError(
+                "The document for this dialog was closed. Reopen the generator "
+                "on the document you want to edit.")
+        if self._document_record(self._document) != self._source_record:
+            raise RuntimeError(
+                "This document's generator project changed outside this dialog. "
+                "Reopen the generator to load its current settings.")
+        return self._document
 
     def _spin(self, value=0.0, minimum=0.0, maximum=2000.0, decimals=2, suffix=" mm"):
         widget = self.QtWidgets.QDoubleSpinBox()
@@ -4246,10 +4337,55 @@ class CaseInsertDialog(object):
             self.generate_button.setText(
                 "Generate / update printable model" if (not lid_mode or printable)
                 else "Preview configuration (print blocked)")
+        self._update_export_availability()
+
+    def _connect_export_changes(self):
+        """Refresh cheap control-state checks; CAD validation happens on actions."""
+        QW = self.QtWidgets
+        for widget in self.dialog.findChildren(QW.QDoubleSpinBox):
+            widget.valueChanged.connect(self._update_export_availability)
+        for widget in self.dialog.findChildren(QW.QSpinBox):
+            widget.valueChanged.connect(self._update_export_availability)
+        for widget in self.dialog.findChildren(QW.QSlider):
+            widget.valueChanged.connect(self._update_export_availability)
+        for widget in self.dialog.findChildren(QW.QComboBox):
+            widget.currentIndexChanged.connect(self._update_export_availability)
+        for widget in self.dialog.findChildren(QW.QCheckBox):
+            widget.toggled.connect(self._update_export_availability)
+        for widget in self.dialog.findChildren(QW.QLineEdit):
+            widget.textChanged.connect(self._update_export_availability)
+        self.project_canvas.scene.changed.connect(self._update_export_availability)
+        self.column_bays.changed = self._update_export_availability
+        self.row_bays.changed = self._update_export_availability
+
+    def _controls_signature(self):
+        mode = self.mode_combo.currentIndex()
+        controls = (self._project_controls() if mode in (0, 3)
+                    else self._legacy_controls())
+        return json.dumps([mode, controls], sort_keys=True)
+
+    def _update_export_availability(self, *_args):
+        if self._updating_inspector:
+            return
+        enabled = False
+        reason = "Generate or save the current model before exporting."
+        if not self._hydrating and not self._updating_inspector:
+            try:
+                self._bound_document()
+                enabled = (
+                    self._generated_has_parts and
+                    self._generated_controls_signature == self._controls_signature())
+                if enabled:
+                    reason = "Export the checked parts from %s." % self._document_name
+                elif self._generated_has_parts:
+                    reason = "Settings changed. Generate or save the updated model before exporting."
+            except Exception as exc:
+                reason = str(exc)
         for name in ("export_stl_button", "export_step_button"):
             button = getattr(self, name, None)
             if button is not None:
-                button.setEnabled(not lid_mode or printable)
+                button.setEnabled(enabled)
+                button.setToolTip(reason)
 
     def _update_canvas_case(self, *_args):
         if not hasattr(self, "project_canvas"):
@@ -4282,7 +4418,7 @@ class CaseInsertDialog(object):
     def _update_layer_budget(self, *_args):
         if not hasattr(self, "layer_budget"):
             return
-        floor = 2.4
+        floor = float(self._base_project.get("layers", {}).get("floor_mm", 2.4))
         usable = max(0.0, self.insert_depth.value() - self.bottom_clearance.value())
         if str(self.containment_mode.currentData()) == "shared_panel":
             usable = max(
@@ -4303,8 +4439,12 @@ class CaseInsertDialog(object):
         self.layer_budget.setText(text)
 
     def _next_object_id(self, object_type):
-        self._object_counter += 1
-        return "%s-%02d" % (object_type.replace("_", "-"), self._object_counter)
+        while True:
+            self._object_counter += 1
+            candidate = "%s-%02d" % (
+                object_type.replace("_", "-"), self._object_counter)
+            if candidate not in self.project_canvas.objects:
+                return candidate
 
     def _default_composer_object(self, object_type):
         object_id = self._next_object_id(object_type)
@@ -4502,17 +4642,10 @@ class CaseInsertDialog(object):
             self.project_canvas.update_selected({"locked": not bool(obj.get("locked", False))})
             self._canvas_selection_changed(self.project_canvas.selected_object())
 
-    def _project_spec(self, lid_panel_enabled=None, compute_layout_inset=True):
+    def _project_controls(self):
         source = str(self.lid_clearance_source.currentData())
         current_objects = self.project_canvas.to_objects()
-        preserved_unplaced = []
-        if (self._layout_snapshot is not None and
-                current_objects == self._layout_snapshot):
-            preserved_unplaced = list(self._layout_unplaced)
-        else:
-            self._layout_snapshot = None
-            self._layout_unplaced = []
-        spec = {
+        return {
             "schema_version": 1,
             "case": {
                 "case_model": self._selected_case_name(),
@@ -4538,7 +4671,6 @@ class CaseInsertDialog(object):
             "layers": {
                 "enabled": self.layers_enabled.isChecked(),
                 "ratio": self.layer_ratio.value() / 100.0,
-                "floor_mm": 2.4,
             },
             "containment": {
                 "mode": str(self.containment_mode.currentData()),
@@ -4553,16 +4685,28 @@ class CaseInsertDialog(object):
             },
             "objects": current_objects,
         }
+
+    def _project_spec(self, lid_panel_enabled=None, compute_layout_inset=True):
+        controls = self._project_controls()
+        spec = _overlay_edited_controls(
+            self._base_project, self._initial_project_controls, controls)
+        spec["layers"].setdefault("floor_mm", 2.4)
         spec["lid_panel"]["enabled"] = (
             self.mode_combo.currentIndex() == 3
             if lid_panel_enabled is None else bool(lid_panel_enabled))
-        if preserved_unplaced:
-            spec["unplaced"] = preserved_unplaced
+        if (self._layout_snapshot is not None and
+                controls["objects"] == self._layout_snapshot):
+            spec["unplaced"] = list(self._layout_unplaced)
+        else:
+            spec.pop("unplaced", None)
+            self._layout_snapshot = None
+            self._layout_unplaced = []
         spec = _project_with_svg_dimensions(spec)
         if compute_layout_inset:
             params = _project_case_params(spec)
             inset = _required_project_layout_inset(spec, params)
-            spec["case"]["layout_inset"] = round(inset, 3)
+            spec["case"]["layout_inset"] = max(
+                float(spec["case"].get("layout_inset", 0.0)), round(inset, 3))
         else:
             spec["case"]["layout_inset"] = 0.0
         usable_length = max(
@@ -4673,13 +4817,23 @@ class CaseInsertDialog(object):
             self.case_combo.setCurrentIndex(index)
 
     def _load_active_project(self):
-        """Hydrate the composer when the active FCStd contains ProjectJSON."""
-        try:
-            project = load_project()
-        except RuntimeError:
+        """Hydrate this dialog's document, including exposed legacy modes."""
+        doc = self._document
+        if doc is None:
             return False
+        try:
+            root = _find_project_group(doc)
+            params = _find_parameter_object(doc)
+            if not (getattr(root, "ProjectJSON", "") or
+                    getattr(params, "ProjectJSON", "")):
+                raw = getattr(params, "ParameterJSON", "")
+                if not raw:
+                    return False
+                return self._load_legacy_parameters(json.loads(str(raw)))
+            project = load_project(doc)
         except Exception as exc:
-            self.status.setText("Stored project could not be loaded: %s" % exc)
+            self._load_error = "Stored project could not be loaded: %s" % exc
+            self.status.setText(self._load_error)
             return False
         case = project["case"]
         self._set_case_selection(case["case_model"])
@@ -4783,12 +4937,81 @@ class CaseInsertDialog(object):
                 project["layout_strategy"])
             if layout_index >= 0:
                 self.layout_strategy.setCurrentIndex(layout_index)
+        self._base_project = json.loads(json.dumps(project))
+        self._initial_project_controls = self._project_controls()
         self._update_canvas_case()
         self._update_layer_budget()
         self._panel_pattern_changed()
         self._update_lid_generation_gate()
+        self._generation_signature = self._request_signature(
+            (self.mode_combo.currentIndex(), project))
         self.status.setText(
-            "Loaded editable project from %s" % App.ActiveDocument.Name)
+            "Loaded editable project from %s" % self._document_name)
+        return True
+
+    def _load_legacy_parameters(self, params):
+        if not isinstance(params, dict):
+            raise ValueError("Stored insert parameters must be a JSON object")
+        modes = {"SVG Cutout": 1, "Dividers": 2, "Case Blank": 4}
+        mode = params.get("insert_type")
+        if mode not in modes:
+            raise ValueError("Stored legacy insert mode is not supported: %s" % mode)
+        self._set_case_selection(params.get("case_model", "Custom Case"))
+        numeric = {
+            "internal_length": self.internal_l, "internal_width": self.internal_w,
+            "insert_depth": self.insert_depth, "corner_radius": self.corner_radius,
+            "side_clearance": self.side_clearance, "bottom_clearance": self.bottom_clearance,
+            "taper_allowance": self.taper_allowance, "bed_x": self.bed_x,
+            "bed_y": self.bed_y, "bed_margin": self.bed_margin,
+            "lid_length": self.lid_length, "lid_width": self.lid_width,
+            "lid_clearance": self.lid_clearance,
+            "svg_scale": self.svg_scale, "svg_x": self.svg_x, "svg_y": self.svg_y,
+            "svg_rotation": self.svg_rotation, "cutout_depth": self.cutout_depth,
+            "svg_clearance": self.svg_clearance, "rows": self.rows,
+            "columns": self.columns, "base_thickness": self.base_thickness,
+            "outer_wall": self.outer_wall, "divider_wall": self.divider_wall,
+            "divider_height": self.divider_height,
+        }
+        for key, widget in numeric.items():
+            if key in params and params[key] is not None:
+                value = float(params[key])
+                if not math.isfinite(value):
+                    raise ValueError("Stored %s must be finite" % key)
+                widget.setValue(int(value) if key in ("rows", "columns") else value)
+        for key, widget in (("lid_envelope_source", self.lid_envelope_source),
+                            ("lid_clearance_source", self.lid_clearance_source)):
+            if key in params:
+                index = widget.findData(params[key])
+                if index < 0:
+                    raise ValueError("Stored %s is not supported" % key)
+                widget.setCurrentIndex(index)
+        # Setting the source can clear an unknown value, so restore a known one last.
+        if params.get("lid_clearance_source") in ("measured", "cad-derived"):
+            self.lid_clearance.setValue(float(params.get("lid_clearance") or 0.0))
+        for key, widget in (("split_for_bed", self.split_for_bed),
+                            ("through_cut", self.through_cut),
+                            ("invert_svg", self.invert_svg)):
+            if key in params:
+                widget.setChecked(bool(params[key]))
+        self.svg_path.setText(str(params.get("svg_path", "")))
+        layouts = ("Equal grid", "Rows only", "Columns only", "Measured bay sizes")
+        layout = params.get("divider_layout", "Equal grid")
+        if layout not in layouts:
+            raise ValueError("Stored divider layout is not supported: %s" % layout)
+        self.div_layout.setCurrentIndex(layouts.index(layout))
+        for key, editor in (("length_bays", self.column_bays),
+                            ("width_bays", self.row_bays)):
+            if params.get(key):
+                entries = []
+                for token in str(params[key]).split(","):
+                    token = token.strip()
+                    entries.append((50.0 if token == "*" else float(token), token == "*"))
+                editor.set_bays(entries)
+        self.mode_combo.setCurrentIndex(modes[mode])
+        self._base_legacy_params = json.loads(json.dumps(params))
+        self._initial_legacy_controls = self._legacy_controls()
+        self._generation_signature = self._request_signature(self._current_request())
+        self.status.setText("Loaded editable %s from %s" % (mode, self._document_name))
         return True
 
     def _load_case(self):
@@ -4924,7 +5147,7 @@ class CaseInsertDialog(object):
         if filename:
             self.svg_path.setText(filename)
 
-    def _params(self):
+    def _legacy_controls(self):
         insert_modes = ("Project Composer", "SVG Cutout", "Dividers", "Lid Panel", "Case Blank")
         divider_layouts = ("Equal grid", "Rows only", "Columns only",
                            "Measured bay sizes")
@@ -4959,6 +5182,11 @@ class CaseInsertDialog(object):
             "lid_dimensions_verified": self._lid_mode_available(),
         }
 
+    def _params(self):
+        return _overlay_edited_controls(
+            self._base_legacy_params, self._initial_legacy_controls,
+            self._legacy_controls())
+
     def _refresh_export_parts(self, *_args, **kwargs):
         """Refresh the generated-part checklist without losing user choices."""
         select_all = bool(kwargs.get("select_all", False))
@@ -4971,11 +5199,12 @@ class CaseInsertDialog(object):
             if item.checkState() == self.QtCore.Qt.Checked:
                 old_checked.add(name)
         try:
-            objects = active_results()
+            objects = active_results(self._bound_document())
         except RuntimeError:
             objects = []
+        self._generated_has_parts = bool(objects)
         new_names = [obj.Name for obj in objects]
-        keep_checks = bool(old_names) and old_names == new_names and not select_all
+        keep_checks = bool(old_names) and not select_all
         self.export_parts.blockSignals(True)
         self.export_parts.clear()
         for obj in objects:
@@ -4990,6 +5219,7 @@ class CaseInsertDialog(object):
             self.export_parts.addItem(item)
         self.export_parts.blockSignals(False)
         self._export_part_selection_changed()
+        self._update_export_availability()
 
     def _set_export_parts_checked(self, checked):
         state = (self.QtCore.Qt.Checked if checked
@@ -5033,22 +5263,56 @@ class CaseInsertDialog(object):
         self.status.setText("Error: %s" % exc)
         self.QtWidgets.QMessageBox.warning(self.dialog, "Case Insert Generator", str(exc))
 
+    def _current_request(self):
+        mode = self.mode_combo.currentIndex()
+        if mode in (0, 3):
+            spec = self._project_spec(lid_panel_enabled=mode == 3)
+            return mode, _project_module().validate_project(spec)
+        return mode, _resolved_params(self._params())
+
+    @staticmethod
+    def _request_signature(request):
+        mode, settings = request
+        settings = json.loads(json.dumps(settings))
+        if mode in (0, 3):
+            for key in ("result", "results", "parts", "warnings", "lid_panel_report"):
+                settings.pop(key, None)
+            settings.setdefault("unplaced", [])
+            # The composer placement inset does not shape the lid-panel model.
+            if mode == 3:
+                settings.get("case", {}).pop("layout_inset", None)
+        return json.dumps([mode, settings], sort_keys=True)
+
+    def _generate_current(self, request):
+        mode, settings = request
+        doc = self._bound_document(create=True)
+        if mode == 0:
+            report = generate_project(settings, document=doc)
+        elif mode == 3:
+            budget = _project_module().lid_panel_height_budget(settings)
+            report = (generate_lid_panel_project(settings, document=doc)
+                      if budget["printable"]
+                      else preview_lid_panel_project(settings, document=doc))
+        else:
+            report = generate_insert(settings, document=doc)
+        self._source_record = self._document_record(doc)
+        if mode in (0, 3):
+            self._base_project = load_project(doc)
+            self._initial_project_controls = self._project_controls()
+        else:
+            params = _find_parameter_object(doc)
+            self._base_legacy_params = json.loads(str(params.ParameterJSON))
+            self._initial_legacy_controls = self._legacy_controls()
+        self._generation_signature = self._request_signature(self._current_request())
+        self._generated_controls_signature = self._controls_signature()
+        self._refresh_export_parts()
+        if not isinstance(report, dict) and hasattr(report, "to_mapping"):
+            report = report.to_mapping()
+        return report
+
     def _generate(self):
         try:
-            mode_index = self.mode_combo.currentIndex()
-            if mode_index == 0:
-                report = generate_project(
-                    self._project_spec(lid_panel_enabled=False))
-            elif mode_index == 3:
-                spec = self._project_spec(lid_panel_enabled=True)
-                budget = _project_module().lid_panel_height_budget(spec)
-                report = (generate_lid_panel_project(spec)
-                          if budget["printable"]
-                          else preview_lid_panel_project(spec))
-            else:
-                report = generate_insert(self._params())
-            if not isinstance(report, dict) and hasattr(report, "to_mapping"):
-                report = report.to_mapping()
+            report = self._generate_current(self._current_request())
             if report["parts"]:
                 message = "Generated %d printable part%s: valid geometry, %.0f mm³ total" % (
                     report["parts"], "" if report["parts"] == 1 else "s", report["volume"])
@@ -5058,7 +5322,6 @@ class CaseInsertDialog(object):
                     "printable STL/STEP generation remains blocked.")
             if report["warnings"]:
                 message += "\n" + "\n".join(report["warnings"])
-            self._refresh_export_parts(select_all=True)
             self.status.setText(message)
             self._fit_view()
         except Exception as exc:
@@ -5066,10 +5329,14 @@ class CaseInsertDialog(object):
 
     def _fit_view(self):
         try:
-            Gui.activeDocument().activeView().viewAxonometric()
-            Gui.activeDocument().activeView().fitAll()
+            import FreeCADGui as Gui
+            doc = self._bound_document()
+            view = Gui.getDocument(doc.Name).activeView()
+            view.viewAxonometric()
+            view.fitAll()
         except Exception as exc:
-            self.status.setText("Fit View unavailable: %s" % exc)
+            previous = self.status.text()
+            self.status.setText("%s\nFit View unavailable: %s" % (previous, exc))
 
     def _save_path(self, title, pattern, suffix):
         filename = self.QtWidgets.QFileDialog.getSaveFileName(self.dialog, title, macro_directory(), pattern)[0]
@@ -5077,67 +5344,79 @@ class CaseInsertDialog(object):
             filename += suffix
         return filename
 
-    def _export_stl(self):
+    def _confirm_export_overwrite(self, paths):
+        box = self.QtWidgets.QMessageBox(self.dialog)
+        box.setWindowTitle("Replace existing export files?")
+        box.setIcon(self.QtWidgets.QMessageBox.Warning)
+        box.setText("%d export file%s already exist." %
+                    (len(paths), "" if len(paths) == 1 else "s"))
+        box.setInformativeText(
+            "Replace these files? Open Details to inspect the complete destination list.")
+        box.setDetailedText("\n".join(paths))
+        box.setStandardButtons(self.QtWidgets.QMessageBox.Yes | self.QtWidgets.QMessageBox.No)
+        box.setDefaultButton(self.QtWidgets.QMessageBox.No)
+        return box.exec_() == self.QtWidgets.QMessageBox.Yes
+
+    def _export_model(self, format_name, exporter, pattern, suffix):
         try:
-            if self.mode_combo.currentIndex() == 3:
-                spec = self._project_spec(
-                    lid_panel_enabled=True, compute_layout_inset=False)
-                spec["objects"] = []
-                budget = _project_module().lid_panel_height_budget(spec)
+            doc = self._bound_document()
+            request = self._current_request()
+            if request[0] == 3:
+                budget = _project_module().lid_panel_height_budget(request[1])
                 if not budget["printable"]:
                     self.status.setText(
-                        "STL export blocked: %s" % " ".join(budget["reasons"]))
+                        "%s export blocked: %s" %
+                        (format_name, " ".join(budget["reasons"])))
                     return
+            if self._request_signature(request) != self._generation_signature:
+                raise RuntimeError(
+                    "Settings changed. Generate or save the updated model before exporting.")
             selected_names = self._selected_export_names()
-            path = self._save_path("Export STL", "STL mesh (*.stl)", ".stl")
+            path = self._save_path("Export %s" % format_name, pattern, suffix)
             if path:
-                outputs = export_stl(
-                    path, selected_names=selected_names)
+                destinations = export_paths(path, doc=doc, selected_names=selected_names)
+                collisions = [name for name in destinations if os.path.lexists(name)]
+                if collisions and not self._confirm_export_overwrite(collisions):
+                    self.status.setText("Export cancelled; existing files were kept.")
+                    return
+                # A file dialog is modeless with respect to document events.
+                # Recheck ownership after the picker and collision confirmation.
+                self._bound_document()
+                if self._request_signature(self._current_request()) != self._generation_signature:
+                    raise RuntimeError("Settings changed while choosing export files. Generate again.")
+                outputs = exporter(path, doc=doc, selected_names=selected_names,
+                                   overwrite=bool(collisions))
                 count = len(outputs) if isinstance(outputs, list) else 1
-                self.status.setText("Exported %d STL file%s" %
-                                    (count, "" if count == 1 else "s"))
+                self.status.setText("Exported %d %s file%s from %s" %
+                                    (count, format_name, "" if count == 1 else "s",
+                                     self._document_name))
         except Exception as exc:
             self._show_error(exc)
 
+    def _export_stl(self):
+        self._export_model("STL", export_stl, "STL mesh (*.stl)", ".stl")
+
     def _export_step(self):
-        try:
-            if self.mode_combo.currentIndex() == 3:
-                spec = self._project_spec(
-                    lid_panel_enabled=True, compute_layout_inset=False)
-                spec["objects"] = []
-                budget = _project_module().lid_panel_height_budget(spec)
-                if not budget["printable"]:
-                    self.status.setText(
-                        "STEP export blocked: %s" % " ".join(budget["reasons"]))
-                    return
-            selected_names = self._selected_export_names()
-            path = self._save_path("Export STEP", "STEP model (*.step *.stp)", ".step")
-            if path:
-                outputs = export_step(
-                    path, selected_names=selected_names)
-                count = len(outputs) if isinstance(outputs, list) else 1
-                self.status.setText("Exported %d STEP file%s" %
-                                    (count, "" if count == 1 else "s"))
-        except Exception as exc:
-            self._show_error(exc)
+        self._export_model("STEP", export_step, "STEP model (*.step *.stp)", ".step")
 
     def _save_fcstd(self):
         try:
-            if self.mode_combo.currentIndex() == 3:
-                spec = self._project_spec(lid_panel_enabled=True)
-                budget = _project_module().lid_panel_height_budget(spec)
-                if budget["printable"]:
-                    generate_lid_panel_project(spec)
-                else:
-                    preview_lid_panel_project(spec)
-                self._refresh_export_parts(select_all=True)
             path = self._save_path("Save FreeCAD document", "FreeCAD document (*.FCStd)", ".FCStd")
             if path:
-                save_fcstd(path); self.status.setText("Saved %s" % path)
+                request = self._current_request()
+                if self._request_signature(request) != self._generation_signature:
+                    self._generate_current(request)
+                doc = self._bound_document()
+                save_fcstd(path, doc=doc)
+                self.status.setText("Saved current settings and model to %s" % path)
         except Exception as exc:
             self._show_error(exc)
 
     def _reset(self):
+        self._base_project = {}
+        self._initial_project_controls = {}
+        self._base_legacy_params = {}
+        self._initial_legacy_controls = {}
         self._set_case_selection("Custom Case")
         self.internal_l.setValue(300.0); self.internal_w.setValue(200.0); self.insert_depth.setValue(40.0)
         self.corner_radius.setValue(8.0); self.side_clearance.setValue(1.0)

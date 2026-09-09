@@ -1,10 +1,13 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
-"""Focused pure tests for generated-part export selection."""
+"""Focused pure tests for catalog validation and generated-part export selection."""
 
 from __future__ import annotations
 
 import importlib
+import json
+from pathlib import Path
 import sys
+import tempfile
 import types
 import unittest
 def load_selection_api():
@@ -111,6 +114,91 @@ class ExportSelectionTests(unittest.TestCase):
                 document, selected_names=["UpperCarrier"])],
             ["UpperCarrier"],
         )
+
+
+class CaseCatalogValidationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.api = load_selection_api()
+
+    def setUp(self):
+        catalog = self.api["load_case_catalog"]()
+        self.catalog = {"schema_version": 1, "presets": catalog["presets"]}
+        self.preset = self.catalog["presets"][0]
+
+    def load_custom_catalog(self, field=None, value=None):
+        if field is not None:
+            self.preset["geometry"][field] = value
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "catalog.json"
+            path.write_text(json.dumps(self.catalog), encoding="utf-8")
+            return self.api["load_case_catalog"](path)
+
+    def assert_invalid_dimension(self, field, value, reason):
+        with self.assertRaises(ValueError) as caught:
+            self.load_custom_catalog(field, value)
+        self.assertEqual(
+            str(caught.exception),
+            "%s must be %s for %s" % (
+                field.replace("_", " "), reason, self.preset["display_name"]),
+        )
+
+    def test_nan_numeric_literal_is_rejected(self):
+        self.assert_invalid_dimension("internal_length", float("nan"), "a finite number")
+
+    def test_infinity_numeric_literal_is_rejected(self):
+        self.assert_invalid_dimension("internal_width", float("inf"), "a finite number")
+
+    def test_negative_corner_radius_is_rejected(self):
+        self.assert_invalid_dimension("bottom_corner_radius", -10, "non-negative")
+
+    def test_boolean_depth_is_rejected(self):
+        self.assert_invalid_dimension("internal_depth", True, "a finite number")
+
+    def test_nan_string_is_rejected(self):
+        self.assert_invalid_dimension("internal_length", "NaN", "a finite number")
+
+    def test_infinity_string_is_rejected(self):
+        self.assert_invalid_dimension("internal_width", "Infinity", "a finite number")
+
+    def test_all_required_geometry_fields_require_finite_numbers(self):
+        geometry = self.preset["geometry"]
+        for field, original in list(geometry.items()):
+            for value in (None, False, "12.5", [], {}, float("-inf"), 10 ** 400):
+                with self.subTest(field=field, value=value):
+                    self.assert_invalid_dimension(field, value, "a finite number")
+            geometry[field] = original
+
+    def test_dimension_ranges_are_enforced(self):
+        geometry = self.preset["geometry"]
+        for field in ("internal_length", "internal_width", "internal_depth", "bottom_depth"):
+            original = geometry[field]
+            for value in (0, -1):
+                with self.subTest(field=field, value=value):
+                    self.assert_invalid_dimension(field, value, "positive")
+            geometry[field] = original
+        for field in ("bottom_corner_radius", "floor_fillet_radius", "profile_reference_height"):
+            original = geometry[field]
+            with self.subTest(field=field):
+                self.assert_invalid_dimension(field, -1, "non-negative")
+            geometry[field] = original
+
+    def test_valid_integer_dimensions_and_zero_radii_are_preserved(self):
+        geometry = self.preset["geometry"]
+        geometry.update({
+            "internal_length": 180,
+            "internal_width": 120,
+            "internal_depth": 45,
+            "bottom_depth": 40,
+            "bottom_corner_radius": 0,
+            "floor_fillet_radius": 0,
+            "draft_angle_degrees": 0,
+            "profile_reference_height": 0,
+        })
+        loaded = self.load_custom_catalog()
+        self.assertEqual(loaded["presets"], self.catalog["presets"])
+        model = loaded["models"][self.preset["display_name"]]
+        self.assertEqual({field: model[field] for field in geometry}, geometry)
 
 
 if __name__ == "__main__":

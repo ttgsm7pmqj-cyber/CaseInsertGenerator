@@ -2994,20 +2994,29 @@ def export_paths(path, doc=None, selected_names=None):
     return _numbered_export_paths(os.fspath(path), len(objects))
 
 
-def _check_export_destinations(paths, overwrite):
+def _check_export_destinations(paths, confirmed_overwrites):
     for path in paths:
         if os.path.isdir(path):
             raise IsADirectoryError("Export destination is a directory: %s" % path)
-    collisions = [path for path in paths if os.path.lexists(path)]
-    if collisions and not overwrite:
+    collisions = [path for path in paths if os.path.lexists(path)
+                  and os.path.abspath(path) not in confirmed_overwrites]
+    if collisions:
         raise FileExistsError(
             "Export files already exist; confirm replacement of these files: %s" %
             ", ".join(collisions))
 
 
-def _write_export_batch(objects, paths, write_part, overwrite=False):
+def _write_export_batch(objects, paths, write_part, overwrite=False,
+                        confirmed_overwrites=None):
     """Stage a complete export, restoring prior files if replacement fails."""
-    _check_export_destinations(paths, overwrite)
+    # GUI callers retain the collision list shown at confirmation time.
+    # Direct overwrite=True callers authorize only files present at entry.
+    if confirmed_overwrites is None:
+        confirmed_overwrites = [path for path in paths
+                                if overwrite and os.path.lexists(path)]
+    confirmed_overwrites = frozenset(os.path.abspath(path)
+                                     for path in confirmed_overwrites)
+    _check_export_destinations(paths, confirmed_overwrites)
     parent = os.path.dirname(os.path.abspath(paths[0]))
     staging = tempfile.mkdtemp(prefix=".caseinsert-export-", dir=parent)
     keep_recovery = False
@@ -3024,7 +3033,7 @@ def _write_export_batch(objects, paths, write_part, overwrite=False):
 
         # Recheck after expensive meshing: a destination may have appeared
         # while the export was being prepared.
-        _check_export_destinations(paths, overwrite)
+        _check_export_destinations(paths, confirmed_overwrites)
         backup_dir = os.path.join(staging, "previous")
         os.mkdir(backup_dir)
         for output in paths:
@@ -3066,8 +3075,9 @@ def _shape_at_origin(shape):
     return placed
 
 
-def export_stl(path, doc=None, selected_names=None, overwrite=False):
-    """Export selected parts; existing files require explicit overwrite=True."""
+def export_stl(path, doc=None, selected_names=None, overwrite=False,
+               confirmed_overwrites=None):
+    """Export parts, replacing only confirmed paths or existing files if overwrite=True."""
     import Mesh
     import MeshPart
     objects = active_results(doc, selected_names=selected_names)
@@ -3121,18 +3131,21 @@ def export_stl(path, doc=None, selected_names=None, overwrite=False):
                 raise RuntimeError("STL tessellation is not a closed solid")
             mesh = welded
         mesh.write(output)
-    return _write_export_batch(objects, paths, write_part, overwrite=overwrite)
+    return _write_export_batch(objects, paths, write_part, overwrite=overwrite,
+                               confirmed_overwrites=confirmed_overwrites)
 
 
-def export_step(path, doc=None, selected_names=None, overwrite=False):
-    """Export selected parts; existing files require explicit overwrite=True."""
+def export_step(path, doc=None, selected_names=None, overwrite=False,
+                confirmed_overwrites=None):
+    """Export parts, replacing only confirmed paths or existing files if overwrite=True."""
     objects = active_results(doc, selected_names=selected_names)
     paths = _numbered_export_paths(os.fspath(path), len(objects))
 
     def write_part(obj, output):
         _shape_at_origin(obj.Shape).exportStep(output)
 
-    return _write_export_batch(objects, paths, write_part, overwrite=overwrite)
+    return _write_export_batch(objects, paths, write_part, overwrite=overwrite,
+                               confirmed_overwrites=confirmed_overwrites)
 
 
 def save_fcstd(path, doc=None):
@@ -4727,8 +4740,8 @@ class CaseInsertDialog(object):
         if compute_layout_inset:
             params = _project_case_params(spec)
             inset = _required_project_layout_inset(spec, params)
-            spec["case"]["layout_inset"] = max(
-                float(spec["case"].get("layout_inset", 0.0)), round(inset, 3))
+            # This is derived from current geometry, including layer hardware.
+            spec["case"]["layout_inset"] = round(inset, 3)
         else:
             spec["case"]["layout_inset"] = 0.0
         usable_length = max(
@@ -5434,7 +5447,7 @@ class CaseInsertDialog(object):
                 if self._request_signature(self._current_request()) != self._generation_signature:
                     raise RuntimeError("Settings changed while choosing export files. Generate again.")
                 outputs = exporter(path, doc=doc, selected_names=selected_names,
-                                   overwrite=bool(collisions))
+                                   confirmed_overwrites=collisions)
                 count = len(outputs) if isinstance(outputs, list) else 1
                 self.status.setText("Exported %d %s file%s from %s" %
                                     (count, format_name, "" if count == 1 else "s",

@@ -10,7 +10,7 @@ import sys
 import tempfile
 import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 
 def _engine():
@@ -50,6 +50,100 @@ class ExportSafetyTests(unittest.TestCase):
 
     def assert_no_staging(self):
         self.assertEqual(list(self.root.glob(".caseinsert-export-*")), [])
+
+    def gui_export(self, format_name, write_part, confirm):
+        controller = self.engine.CaseInsertDialog.__new__(self.engine.CaseInsertDialog)
+        controller._document_name = "ExportTest"
+        controller._bound_document = lambda: document
+        controller._assert_geometry_unchanged = lambda _doc: None
+        controller._current_request = lambda: (0, {})
+        controller._request_signature = lambda _request: "generated"
+        controller._generation_signature = "generated"
+        controller._selected_export_names = lambda: None
+        controller._save_path = lambda *_args: str(self.base)
+        controller._confirm_export_overwrite = Mock(side_effect=confirm)
+        controller.status = Mock()
+        controller.errors = []
+        controller._show_error = controller.errors.append
+        document = object()
+        objects = [types.SimpleNamespace(Shape=part) for part in (1, 2, 3)]
+
+        def shape_at_origin(part):
+            return types.SimpleNamespace(exportStep=lambda path: write_part(part, path),
+                                         part=part)
+
+        def mesh_from_shape(**kwargs):
+            part = kwargs["Shape"].part
+            return types.SimpleNamespace(Facets=[], isSolid=lambda: True,
+                                         write=lambda path: write_part(part, path))
+
+        with patch.object(self.engine, "active_results", return_value=objects), \
+                patch.object(self.engine, "_shape_at_origin", side_effect=shape_at_origin), \
+                patch.dict(sys.modules, {
+                    "Mesh": types.ModuleType("Mesh"),
+                    "MeshPart": types.SimpleNamespace(meshFromShape=mesh_from_shape),
+                }):
+            getattr(controller, "_export_" + format_name)()
+        return controller
+
+    def test_gui_preserves_confirmed_and_new_outputs_when_a_collision_appears(self):
+        for format_name in ("step", "stl"):
+            for phase in ("confirmation", "staging"):
+                with self.subTest(format=format_name, phase=phase):
+                    self.base = self.root / (format_name + "-" + phase + "." + format_name)
+                    self.paths = self.engine._numbered_export_paths(str(self.base), 3)
+                    Path(self.paths[0]).write_bytes(b"confirmed original")
+                    self.calls.clear()
+
+                    def confirm(_paths):
+                        if phase == "confirmation":
+                            Path(self.paths[1]).write_bytes(b"another operation")
+                        return True
+
+                    def write_part(part, path):
+                        self.write_part(part, path)
+                        if phase == "staging" and part == 3:
+                            Path(self.paths[1]).write_bytes(b"another operation")
+
+                    controller = self.gui_export(format_name, write_part, confirm)
+                    controller._confirm_export_overwrite.assert_called_once_with([self.paths[0]])
+                    self.assertEqual(len(controller.errors), 1)
+                    self.assertIsInstance(controller.errors[0], FileExistsError)
+                    self.assertIn(self.paths[1], str(controller.errors[0]))
+                    self.assertEqual(Path(self.paths[0]).read_bytes(), b"confirmed original")
+                    self.assertEqual(Path(self.paths[1]).read_bytes(), b"another operation")
+                    self.assertFalse(Path(self.paths[2]).exists())
+                    self.assertEqual(self.calls, [] if phase == "confirmation" else [1, 2, 3])
+                    self.assert_no_staging()
+
+    def test_gui_replaces_confirmed_outputs_and_creates_remaining_outputs(self):
+        for format_name in ("step", "stl"):
+            with self.subTest(format=format_name):
+                self.base = self.root / ("confirmed." + format_name)
+                self.paths = self.engine._numbered_export_paths(str(self.base), 3)
+                Path(self.paths[0]).write_bytes(b"confirmed original")
+                controller = self.gui_export(format_name, self.write_part, lambda _paths: True)
+                self.assertEqual(controller.errors, [])
+                controller._confirm_export_overwrite.assert_called_once_with([self.paths[0]])
+                for part, path in enumerate(self.paths, 1):
+                    self.assertEqual(Path(path).read_bytes(), ("new part %d" % part).encode())
+                self.assert_no_staging()
+
+    def test_explicit_overwrite_does_not_replace_outputs_created_during_staging(self):
+        Path(self.paths[0]).write_bytes(b"original")
+
+        def write_part(part, path):
+            self.write_part(part, path)
+            if part == 3:
+                Path(self.paths[1]).write_bytes(b"another operation")
+
+        with self.assertRaises(FileExistsError):
+            self.engine._write_export_batch(
+                [1, 2, 3], self.paths, write_part, overwrite=True)
+        self.assertEqual(Path(self.paths[0]).read_bytes(), b"original")
+        self.assertEqual(Path(self.paths[1]).read_bytes(), b"another operation")
+        self.assertFalse(Path(self.paths[2]).exists())
+        self.assert_no_staging()
 
     def test_numbered_collision_rejects_before_any_writer_is_called(self):
         Path(self.paths[1]).write_bytes(b"keep numbered output")

@@ -1,11 +1,14 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 """Pure regressions for preserving data behind the GUI's visible controls."""
 
+import copy
 import importlib
 import sys
 import types
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
+
+from freecad.CaseInsertGenerator.project_model import layout_project
 
 
 with patch.dict(sys.modules, {"FreeCAD": types.ModuleType("FreeCAD"),
@@ -86,6 +89,67 @@ class ControlPersistenceTests(unittest.TestCase):
                 listDocuments=lambda: {"First": doc})):
             with self.assertRaisesRegex(RuntimeError, "changed outside"):
                 controller._bound_document()
+
+
+class DerivedLayoutInsetTests(unittest.TestCase):
+    def setUp(self):
+        self.controller = engine.CaseInsertDialog.__new__(engine.CaseInsertDialog)
+        self.controller._base_project = {
+            "schema_version": 1,
+            "case": {"case_model": "Custom Case", "internal_length": 100.0,
+                     "internal_width": 80.0, "insert_depth": 30.0,
+                     "corner_radius": 10.0, "side_clearance": 0.0,
+                     "bottom_clearance": 2.0, "taper_allowance": 0.0,
+                     "layout_inset": 13.8},
+            "layers": {"enabled": True, "ratio": 0.5},
+            "containment": {"mode": "none", "clearance_mm": 0.3},
+            "lid_panel": {"enabled": False},
+            "printer": {"bed_x": 256.0, "bed_y": 256.0, "margin": 5.0,
+                        "split": False},
+            "objects": [{"id": "wide-pocket", "type": "rectangular_pocket",
+                         "length": 80.0, "width": 60.0, "height": 5.0}],
+        }
+        initial = copy.deepcopy(self.controller._base_project)
+        initial["case"].pop("layout_inset")
+        self.controller._initial_project_controls = initial
+        self.controls = copy.deepcopy(initial)
+        self.controller._project_controls = lambda: copy.deepcopy(self.controls)
+        self.controller._layout_snapshot = None
+        self.controller.mode_combo = Mock(currentIndex=lambda: 2)
+        self.controller.project_canvas = Mock()
+
+    def test_disabling_layers_reclaims_canvas_and_planner_space(self):
+        with patch.object(engine, "_case_layout_inset", return_value=3.0):
+            before = self.controller._project_spec()
+            self.assertEqual(layout_project(before, "balanced").placed_count, 0)
+            self.controls["layers"]["enabled"] = False
+            after = self.controller._project_spec()
+        self.assertEqual(after["case"]["layout_inset"], 3.0)
+        self.controller.project_canvas.set_case.assert_called_with(100.0, 80.0, 3.0)
+        self.assertEqual(layout_project(after, "balanced").placed_count, 1)
+        self.assertEqual(self.controller._base_project["case"]["layout_inset"], 13.8)
+
+    def test_lower_alignment_clearance_reduces_stored_inset(self):
+        self.controls["containment"]["clearance_mm"] = 0.2
+        with patch.object(engine, "_case_layout_inset", return_value=3.0):
+            spec = self.controller._project_spec()
+        self.assertEqual(spec["case"]["layout_inset"], 13.7)
+        self.controller.project_canvas.set_case.assert_called_with(100.0, 80.0, 13.7)
+
+    def test_smaller_corner_geometry_reduces_stored_inset(self):
+        self.controls["case"]["corner_radius"] = 5.0
+        with patch.object(engine, "_case_layout_inset", return_value=1.5) as contour:
+            spec = self.controller._project_spec()
+        self.assertEqual(contour.call_args.args[0]["corner_radius"], 5.0)
+        self.assertEqual(spec["case"]["layout_inset"], 12.3)
+        self.controller.project_canvas.set_case.assert_called_with(100.0, 80.0, 12.3)
+
+    def test_larger_geometry_still_increases_the_required_inset(self):
+        self.controls["case"]["corner_radius"] = 20.0
+        with patch.object(engine, "_case_layout_inset", return_value=6.0):
+            spec = self.controller._project_spec()
+        self.assertEqual(spec["case"]["layout_inset"], 16.8)
+        self.controller.project_canvas.set_case.assert_called_with(100.0, 80.0, 16.8)
 
 
 if __name__ == "__main__":

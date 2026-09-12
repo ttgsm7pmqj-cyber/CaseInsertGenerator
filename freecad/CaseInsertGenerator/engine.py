@@ -93,10 +93,26 @@ def load_case_catalog(path=None):
         if missing:
             raise ValueError("Geometry for %s is missing %s" %
                              (display_name, ", ".join(missing)))
+        for key in geometry_required:
+            value = geometry[key]
+            try:
+                finite_number = (not isinstance(value, bool)
+                                 and isinstance(value, (int, float))
+                                 and math.isfinite(value))
+            except OverflowError:
+                finite_number = False
+            if not finite_number:
+                raise ValueError("%s must be a finite number for %s" %
+                                 (key.replace("_", " "), display_name))
         for key in ("internal_length", "internal_width", "internal_depth",
                     "bottom_depth"):
-            if float(geometry[key]) <= 0:
+            if geometry[key] <= 0:
                 raise ValueError("%s must be positive for %s" %
+                                 (key.replace("_", " "), display_name))
+        for key in ("bottom_corner_radius", "floor_fillet_radius",
+                    "profile_reference_height"):
+            if geometry[key] < 0:
+                raise ValueError("%s must be non-negative for %s" %
                                  (key.replace("_", " "), display_name))
         verification = preset["verification"]
         if not isinstance(verification, dict) or not verification.get("level"):

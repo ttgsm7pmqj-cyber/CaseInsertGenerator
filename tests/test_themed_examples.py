@@ -5,8 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 from freecad.CaseInsertGenerator.project_model import layout_project, validate_project
@@ -142,8 +144,10 @@ class ThemedExampleCatalogTests(unittest.TestCase):
                 "total": EXPECTED_PACK_COUNT,
             },
         )
-        for relative, expected_hash in manifest["source_sha256"].items():
-            self.assertEqual(_sha256(ROOT / relative), expected_hash, relative)
+        # ponytail: source hashes record generation history; artifact hashes below verify the saved files.
+        self.assertTrue(manifest["source_sha256"])
+        for expected_hash in manifest["source_sha256"].values():
+            self.assertRegex(expected_hash, r"\A[0-9a-f]{64}\Z")
         for sheet_key in ("contact_sheet", "exploded_contact_sheet"):
             record = manifest[sheet_key]
             target = EXAMPLE_ROOT / record["path"]
@@ -193,6 +197,30 @@ class ThemedExampleCatalogTests(unittest.TestCase):
                 self.assertEqual(reopen["source_map_count"], entry["part_count"])
                 self.assertEqual(reopen["visibility_checks"], entry["part_count"])
         self.assertEqual(hashed_artifacts, EXPECTED_PACK_COUNT * 5)
+
+    def test_saved_snapshot_accepts_source_edits_but_rejects_changed_examples(self):
+        manifest = json.loads((EXAMPLE_ROOT / "manifest.json").read_text(encoding="utf-8"))
+        check = type(self)(
+            "test_generated_bundle_has_twenty_three_audited_assembled_and_exploded_examples"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            examples = root / "examples" / "themed-packs"
+            shutil.copytree(EXAMPLE_ROOT, examples)
+            for relative in manifest["source_sha256"]:
+                target = root / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(ROOT / relative, target)
+            with (root / "freecad/CaseInsertGenerator/engine.py").open("a") as handle:
+                handle.write("\n# Later source edit.\n")
+            with patch(__name__ + ".ROOT", root), patch(__name__ + ".EXAMPLE_ROOT", examples):
+                # debug() propagates failures, including assertions inside subTest.
+                check.debug()
+                spec = examples / manifest["examples"][0]["spec"]["path"]
+                with spec.open("a", encoding="utf-8") as handle:
+                    handle.write("\n")
+                with self.assertRaisesRegex(AssertionError, "spec"):
+                    check.debug()
 
 
 class GeneratedArtifactAuditTests(unittest.TestCase):

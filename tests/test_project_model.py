@@ -304,6 +304,22 @@ class ProjectSchemaTests(unittest.TestCase):
 
         self.assertEqual(normalized["layers"]["floor_mm"], 2.4)
 
+    def test_optional_authored_inset_minimum_is_validated_and_enforced(self):
+        source = project_spec()
+        self.assertNotIn("layout_inset_min", validate_project(source)["case"])
+        source["case"].update(layout_inset=3.0, layout_inset_min=12.12345)
+        normalized = validate_project(source)
+        self.assertEqual(normalized["case"]["layout_inset"], 12.12345)
+        self.assertEqual(normalized["case"]["layout_inset_min"], 12.12345)
+        self.assertEqual(source["case"]["layout_inset"], 3.0)
+        source["case"]["layout_inset"] = 20.0
+        self.assertEqual(validate_project(source)["case"]["layout_inset"], 20.0)
+        for value in (-1, True, "wide", None, math.nan, math.inf):
+            with self.subTest(value=value):
+                source["case"]["layout_inset_min"] = value
+                with self.assertRaisesRegex(ProjectValidationError, "case.layout_inset_min"):
+                    validate_project(source)
+
     def test_preset_case_does_not_require_redundant_insert_depth(self):
         source = project_spec()
         source["case"]["case_model"] = "Small rounded envelope (synthetic)"

@@ -154,10 +154,25 @@ script in a fresh FreeCAD profile when verifying installation and lazy startup.
 Python callers of `engine.export_stl()` and `engine.export_step()` must pass
 `overwrite=True` to replace existing files. `engine.export_paths()` returns the
 actual destination list, including numbered part filenames. The GUI displays
-those collisions before asking to replace them.
+those collisions before asking to replace them. Only the confirmed paths (or
+those present at API entry with `overwrite=True`) may be replaced. New outputs
+are installed atomically without replacement using same-filesystem hard links;
+filesystems without hard-link support fail without an unsafe overwrite fallback.
 
-Generated example manifests verify the source hashes. After changing their
-generator inputs, commit the source changes, regenerate with
+The GUI recomputes `case.layout_inset` from the current contour and layer hardware,
+while preserving a saved border above the original geometry's minimum. It records
+that authored minimum as optional schema-v1 `case.layout_inset_min` so it survives
+save/reopen even when geometry temporarily requires a larger inset. API callers
+can set this nonnegative minimum explicitly, including when it equals the
+geometry-derived value. Without that record, a legacy inset equal to the original
+geometry requirement is treated as derived. To reduce an explicit border through
+the API, update both inset fields.
+
+Bundled examples are saved, audited snapshots. Manifest source hashes record the
+inputs used for their historical generation; they need not match later source
+edits. Tests still verify the exact hashes of every saved artifact and reject
+altered examples. To refresh the examples for new generator inputs, commit the
+source changes, regenerate with
 `scripts/run_themed_examples_gui.py` and `scripts/run_lid_panel_example_gui.py`
 in a dedicated FreeCAD GUI process, and rerun the checks before committing the
 refreshed examples. These two renderer scripts exit their FreeCAD process when

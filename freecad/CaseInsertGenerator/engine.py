@@ -1719,6 +1719,25 @@ def _required_project_layout_inset(spec, params, whole=None):
     return inset
 
 
+def _project_layout_inset_min(spec):
+    """Recover an authored border independently of the last effective inset.
+
+    Older projects have no minimum record. Only an inset above the original
+    geometry's requirement is distinguishable from a computed value there.
+    Keep that excess as an absolute minimum, including across save/reopen when
+    larger geometry temporarily requires more space.
+    """
+    case = spec.get("case") or {}
+    minimum = float(case.get("layout_inset_min", 0.0))
+    stored = float(case.get("layout_inset", 0.0))
+    if stored > minimum:
+        original_required = round(_required_project_layout_inset(
+            spec, _project_case_params(spec)), 3)
+        if stored > original_required:
+            minimum = stored
+    return minimum
+
+
 def _assert_inside_case(footprint, whole, object_id):
     """Reject a placed object's occupied volume when it crosses the case BRep."""
     outside = footprint.cut(whole).Volume
@@ -3053,13 +3072,21 @@ def _write_export_batch(objects, paths, write_part, overwrite=False,
         backup_dir = os.path.join(staging, "previous")
         os.mkdir(backup_dir)
         for output in paths:
-            if os.path.lexists(output):
+            if (os.path.abspath(output) in confirmed_overwrites and
+                    os.path.lexists(output)):
                 backup = os.path.join(backup_dir, os.path.basename(output))
                 shutil.copy2(output, backup, follow_symlinks=False)
                 backups[output] = backup
         try:
             for candidate, output in zip(staged, paths):
-                os.replace(candidate, output)
+                if os.path.abspath(output) in confirmed_overwrites:
+                    os.replace(candidate, output)
+                else:
+                    # Staging is on the destination filesystem. A hard link
+                    # publishes the complete file atomically and fails if any
+                    # entry appeared since the checks, including a symlink.
+                    # Fail closed if unsupported; never fall back to replace.
+                    os.link(candidate, output)
                 replaced.append(output)
         except BaseException as export_error:
             recovery_errors = []
@@ -4452,6 +4479,8 @@ class CaseInsertDialog(object):
                 0.2, self.retention_clearance.value()
                 if hasattr(self, "retention_clearance") else 0.3)
             conservative_inset += 10.5 + key_clearance
+        conservative_inset = max(
+            conservative_inset, _project_layout_inset_min(self._base_project))
         self.project_canvas.set_case(width, length, conservative_inset)
 
     def _layers_toggled(self, enabled):
@@ -4754,12 +4783,14 @@ class CaseInsertDialog(object):
             self._layout_unplaced = []
         spec = _project_with_svg_dimensions(spec)
         if compute_layout_inset:
+            minimum = _project_layout_inset_min(self._base_project)
             params = _project_case_params(spec)
             inset = _required_project_layout_inset(spec, params)
-            # This is derived from current geometry, including layer hardware.
-            spec["case"]["layout_inset"] = round(inset, 3)
+            spec["case"]["layout_inset_min"] = minimum
+            spec["case"]["layout_inset"] = max(minimum, round(inset, 3))
         else:
             spec["case"]["layout_inset"] = 0.0
+            spec["case"].pop("layout_inset_min", None)
         usable_length = max(
             1.0, spec["case"]["internal_length"] -
             2.0 * (spec["case"]["side_clearance"] +
@@ -5350,6 +5381,7 @@ class CaseInsertDialog(object):
             # The composer placement inset does not shape the lid-panel model.
             if mode == 3:
                 settings.get("case", {}).pop("layout_inset", None)
+                settings.get("case", {}).pop("layout_inset_min", None)
         return json.dumps([mode, settings], sort_keys=True)
 
     def _generate_current(self, request):

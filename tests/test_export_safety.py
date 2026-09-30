@@ -3,9 +3,11 @@
 
 from __future__ import annotations
 
+import errno
 import importlib
 import os
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import types
@@ -145,6 +147,98 @@ class ExportSafetyTests(unittest.TestCase):
         self.assertFalse(Path(self.paths[2]).exists())
         self.assert_no_staging()
 
+    def test_collision_during_backup_is_preserved(self):
+        Path(self.paths[0]).write_bytes(b"confirmed original")
+        copy2 = shutil.copy2
+
+        def another_output_appears(source, destination, **kwargs):
+            result = copy2(source, destination, **kwargs)
+            Path(self.paths[1]).write_bytes(b"another operation")
+            return result
+
+        with patch.object(self.engine.shutil, "copy2", side_effect=another_output_appears):
+            with self.assertRaises(FileExistsError):
+                self.batch(overwrite=True)
+        self.assertEqual(Path(self.paths[0]).read_bytes(), b"confirmed original")
+        self.assertEqual(Path(self.paths[1]).read_bytes(), b"another operation")
+        self.assertFalse(Path(self.paths[2]).exists())
+        self.assert_no_staging()
+
+    def install_collision(self, operation, kind):
+        def collide(source, destination):
+            if str(destination) == self.paths[2]:
+                target = Path(destination)
+                if kind == "file":
+                    target.write_bytes(b"another operation")
+                elif kind == "symlink":
+                    target.symlink_to(self.root / "absent-target")
+                else:
+                    target.mkdir()
+                    (target / "keep.txt").write_bytes(b"another operation")
+            return operation(source, destination)
+        return collide
+
+    def assert_install_collision_preserved(self, kind, confirmed=False):
+        if confirmed:
+            self.assertEqual(Path(self.paths[0]).read_bytes(), b"confirmed original")
+        else:
+            self.assertFalse(Path(self.paths[0]).exists())
+        self.assertFalse(Path(self.paths[1]).exists())
+        target = Path(self.paths[2])
+        if kind == "symlink":
+            self.assertTrue(target.is_symlink())
+            self.assertEqual(os.readlink(target), str(self.root / "absent-target"))
+            self.assertFalse(target.exists())
+        else:
+            if kind == "directory":
+                target = target / "keep.txt"
+            self.assertEqual(target.read_bytes(), b"another operation")
+        self.assert_no_staging()
+
+    def test_api_install_collision_rolls_back_without_replacing_unconfirmed_outputs(self):
+        for overwrite in (False, True):
+            for kind in ("file", "symlink", "directory"):
+                with self.subTest(overwrite=overwrite, kind=kind):
+                    self.paths = self.engine._numbered_export_paths(
+                        str(self.root / ("%s-%s.step" % (overwrite, kind))), 3)
+                    if overwrite:
+                        Path(self.paths[0]).write_bytes(b"confirmed original")
+                    with patch.object(self.engine.os, "link", side_effect=
+                                      self.install_collision(os.link, kind)), \
+                            patch.object(self.engine.os, "replace", side_effect=
+                                         self.install_collision(os.replace, kind)):
+                        with self.assertRaises(FileExistsError):
+                            self.batch(overwrite=overwrite)
+                    self.assert_install_collision_preserved(kind, confirmed=overwrite)
+
+    def test_gui_install_collision_preserves_confirmed_and_unconfirmed_outputs(self):
+        for format_name in ("step", "stl"):
+            with self.subTest(format=format_name):
+                self.base = self.root / ("install-collision." + format_name)
+                self.paths = self.engine._numbered_export_paths(str(self.base), 3)
+                Path(self.paths[0]).write_bytes(b"confirmed original")
+                with patch.object(self.engine.os, "link", side_effect=
+                                  self.install_collision(os.link, "file")), \
+                        patch.object(self.engine.os, "replace", side_effect=
+                                     self.install_collision(os.replace, "file")):
+                    controller = self.gui_export(
+                        format_name, self.write_part, lambda _paths: True)
+                self.assertEqual(len(controller.errors), 1)
+                self.assertIsInstance(controller.errors[0], FileExistsError)
+                controller._confirm_export_overwrite.assert_called_once_with([self.paths[0]])
+                self.assert_install_collision_preserved("file", confirmed=True)
+
+    def test_unsupported_atomic_create_fails_without_replacement_fallback(self):
+        Path(self.paths[0]).write_bytes(b"confirmed original")
+        with patch.object(self.engine.os, "link", side_effect=OSError(
+                errno.EOPNOTSUPP, "hard links unsupported")):
+            with self.assertRaisesRegex(OSError, "hard links unsupported"):
+                self.batch(overwrite=True)
+        self.assertEqual(Path(self.paths[0]).read_bytes(), b"confirmed original")
+        self.assertFalse(Path(self.paths[1]).exists())
+        self.assertFalse(Path(self.paths[2]).exists())
+        self.assert_no_staging()
+
     def test_numbered_collision_rejects_before_any_writer_is_called(self):
         Path(self.paths[1]).write_bytes(b"keep numbered output")
         self.assertFalse(self.base.exists())
@@ -252,7 +346,9 @@ class ExportSafetyTests(unittest.TestCase):
                 raise OSError("injected output volume failure")
             return replace(source, destination)
 
-        with patch.object(self.engine.os, "replace", side_effect=fail_replace_and_restore):
+        with patch.object(self.engine.os, "replace", side_effect=fail_replace_and_restore), \
+                patch.object(self.engine.os, "link", side_effect=OSError(
+                    "injected output volume failure")):
             with self.assertRaisesRegex(RuntimeError, "Recovery copies are in") as error:
                 self.batch(overwrite=True)
         staging = list(self.root.glob(".caseinsert-export-*"))
@@ -265,14 +361,14 @@ class ExportSafetyTests(unittest.TestCase):
         target = self.root / "other-project.step"
         target.write_bytes(b"unrelated target")
         Path(self.paths[0]).symlink_to(target)
-        replace = os.replace
+        link = os.link
 
         def fail_second(source, destination):
             if str(destination) == self.paths[1]:
                 raise OSError("injected failure after replacing symlink")
-            return replace(source, destination)
+            return link(source, destination)
 
-        with patch.object(self.engine.os, "replace", side_effect=fail_second):
+        with patch.object(self.engine.os, "link", side_effect=fail_second):
             with self.assertRaises(OSError):
                 self.batch(overwrite=True)
         self.assertTrue(Path(self.paths[0]).is_symlink())

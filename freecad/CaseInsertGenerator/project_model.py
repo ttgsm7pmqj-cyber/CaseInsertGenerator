@@ -62,6 +62,7 @@ _STABLE_CASE_FIELDS = (
     "bottom_clearance",
     "taper_allowance",
     "layout_inset",
+    "layout_inset_min",
 )
 _PERSISTED_PROJECT_FIELDS = (
     "result",
@@ -464,6 +465,16 @@ def validate_project(spec: Mapping[str, Any]) -> dict[str, Any]:
         default=0.0,
         minimum=0.0,
     )
+    # Optional authored minimum, separate from the effective (geometry-raised)
+    # inset. Preserve its absence in legacy schema-v1 snapshots.
+    layout_inset_min = {}
+    if "layout_inset_min" in case_source:
+        minimum_inset = _number_field(
+            case_source, "layout_inset_min", "case.layout_inset_min", issues,
+            default=0.0, minimum=0.0,
+        )
+        layout_inset_min["layout_inset_min"] = minimum_inset
+        layout_inset = max(layout_inset, minimum_inset)
     case_extra_fields = {
         key: copy.deepcopy(case_source[key])
         for key in sorted(case_source)
@@ -1364,6 +1375,7 @@ def validate_project(spec: Mapping[str, Any]) -> dict[str, Any]:
             "bottom_clearance": bottom_clearance,
             "taper_allowance": taper_allowance,
             "layout_inset": layout_inset,
+            **layout_inset_min,
             **case_extra_fields,
         },
         "lid": {

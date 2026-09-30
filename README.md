@@ -158,6 +158,9 @@ those collisions before asking to replace them. Only the confirmed paths (or
 those present at API entry with `overwrite=True`) may be replaced. New outputs
 are installed atomically without replacement using same-filesystem hard links;
 filesystems without hard-link support fail without an unsafe overwrite fallback.
+Rollback checks ownership before removing newly installed outputs. If another
+writer races with cleanup and its file cannot be restored without a collision,
+the export reports where its recovery copy was retained.
 
 The GUI recomputes `case.layout_inset` from the current contour and layer hardware,
 while preserving a saved border above the original geometry's minimum. It records

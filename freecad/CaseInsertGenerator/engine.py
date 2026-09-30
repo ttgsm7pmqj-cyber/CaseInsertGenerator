@@ -3041,6 +3041,31 @@ def _check_export_destinations(paths, confirmed_overwrites):
             ", ".join(collisions))
 
 
+def _remove_owned_export(output, published_stat, backup_dir):
+    """Roll back a new output without discarding a concurrent replacement."""
+    try:
+        current_stat = os.lstat(output)
+    except FileNotFoundError:
+        return
+    # Do not follow symlinks, even ones pointing to our published inode.
+    if not os.path.samestat(published_stat, current_stat):
+        return
+    recovery = tempfile.mkdtemp(prefix="unconfirmed-", dir=backup_dir)
+    withdrawn = os.path.join(recovery, os.path.basename(output))
+    try:
+        os.replace(output, withdrawn)
+    except FileNotFoundError:
+        return
+    # Check the entry after taking it out of the shared namespace. A pathname
+    # check followed by unlink would itself have a check/delete race.
+    if not os.path.samestat(published_stat, os.lstat(withdrawn)):
+        # A replacement won the race with withdrawal. Restore it without
+        # replacing anything else. On failure the caller keeps the recovery
+        # directory, including this entry, and reports its location.
+        os.link(withdrawn, output, follow_symlinks=False)
+    os.unlink(withdrawn)
+
+
 def _write_export_batch(objects, paths, write_part, overwrite=False,
                         confirmed_overwrites=None):
     """Stage a complete export, restoring prior files if replacement fails."""
@@ -3079,6 +3104,7 @@ def _write_export_batch(objects, paths, write_part, overwrite=False,
                 backups[output] = backup
         try:
             for candidate, output in zip(staged, paths):
+                published_stat = os.stat(candidate, follow_symlinks=False)
                 if os.path.abspath(output) in confirmed_overwrites:
                     os.replace(candidate, output)
                 else:
@@ -3087,15 +3113,15 @@ def _write_export_batch(objects, paths, write_part, overwrite=False,
                     # entry appeared since the checks, including a symlink.
                     # Fail closed if unsupported; never fall back to replace.
                     os.link(candidate, output)
-                replaced.append(output)
+                replaced.append((output, published_stat))
         except BaseException as export_error:
             recovery_errors = []
-            for output in reversed(replaced):
+            for output, published_stat in reversed(replaced):
                 try:
                     if output in backups:
                         os.replace(backups[output], output)
                     else:
-                        os.unlink(output)
+                        _remove_owned_export(output, published_stat, backup_dir)
                 except OSError as recovery_error:
                     recovery_errors.append(str(recovery_error))
             if recovery_errors:
@@ -5378,10 +5404,13 @@ class CaseInsertDialog(object):
             for key in ("result", "results", "parts", "warnings", "lid_panel_report"):
                 settings.pop(key, None)
             settings.setdefault("unplaced", [])
+            # This records intent for future edits; layout_inset already
+            # captures its effect on the current model. Legacy documents may
+            # omit the metadata without making their geometry stale.
+            settings.get("case", {}).pop("layout_inset_min", None)
             # The composer placement inset does not shape the lid-panel model.
             if mode == 3:
                 settings.get("case", {}).pop("layout_inset", None)
-                settings.get("case", {}).pop("layout_inset_min", None)
         return json.dumps([mode, settings], sort_keys=True)
 
     def _generate_current(self, request):

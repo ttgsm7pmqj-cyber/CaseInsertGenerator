@@ -4,7 +4,9 @@
 import copy
 import importlib
 import json
+from pathlib import Path
 import sys
+import tempfile
 import types
 import unittest
 from unittest.mock import Mock, patch
@@ -260,6 +262,55 @@ class DerivedLayoutInsetTests(unittest.TestCase):
         self.assertEqual(saved["case"]["layout_inset"], 20.0)
         self.assertEqual(saved["case"]["layout_inset_min"], 20.0)
         self.assertEqual(request["case"]["layout_inset"], 20.0)
+
+    def test_unchanged_legacy_project_exports_and_saves_without_regeneration(self):
+        for inset in (13.8, 20.0):
+            with self.subTest(inset=inset), tempfile.TemporaryDirectory() as directory:
+                controller = self.controller
+                controller.mode_combo.currentIndex = lambda: 0
+                stored = copy.deepcopy(controller._base_project)
+                stored["case"]["layout_inset"] = inset
+                stored["case"].pop("layout_inset_min", None)
+                controller._base_project = validate_project(stored)
+                # _load_active_project records the persisted project's signature.
+                controller._generation_signature = controller._request_signature(
+                    (0, controller._base_project))
+                controller._document_name = "LegacyProject"
+                document = object()
+                controller._bound_document = Mock(return_value=document)
+                controller._assert_geometry_unchanged = Mock()
+                controller._selected_export_names = Mock(return_value=None)
+                output = str(Path(directory) / "legacy.step")
+                controller._save_path = lambda *_: output
+                controller._show_error = Mock()
+                controller.status = Mock()
+                controller._generate_current = Mock()
+                exporter = Mock(return_value=output)
+                with patch.object(engine, "_case_layout_inset", return_value=3.0), \
+                        patch.object(engine, "export_paths", return_value=[output]), \
+                        patch.object(engine, "save_fcstd") as save:
+                    controller._export_model("STEP", exporter, "*.step", ".step")
+                    controller._save_fcstd()
+                controller._show_error.assert_not_called()
+                exporter.assert_called_once_with(
+                    output, doc=document, selected_names=None, confirmed_overwrites=[])
+                save.assert_called_once_with(output, doc=document)
+                controller._generate_current.assert_not_called()
+
+    def test_inset_provenance_does_not_hide_real_geometry_changes(self):
+        controller = self.controller
+        controller.mode_combo.currentIndex = lambda: 0
+        controller._base_project = validate_project(controller._base_project)
+        original = controller._request_signature((0, controller._base_project))
+        with patch.object(engine, "_case_layout_inset", return_value=3.0):
+            request = controller._current_request()
+            self.assertEqual(original, controller._request_signature(request))
+            changed = copy.deepcopy(request)
+            changed[1]["case"]["layout_inset"] += 1.0
+            self.assertNotEqual(original, controller._request_signature(changed))
+            self.controls["layers"]["enabled"] = False
+            self.assertNotEqual(original, controller._request_signature(
+                controller._current_request()))
 
 
 if __name__ == "__main__":

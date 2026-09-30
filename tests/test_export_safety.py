@@ -239,6 +239,91 @@ class ExportSafetyTests(unittest.TestCase):
         self.assertFalse(Path(self.paths[2]).exists())
         self.assert_no_staging()
 
+    def test_rollback_keeps_outputs_replaced_by_another_process(self):
+        for kind in ("file", "symlink", "directory", "deleted"):
+            with self.subTest(kind=kind):
+                self.paths = self.engine._numbered_export_paths(
+                    str(self.root / ("rollback-owner-" + kind + ".step")), 3)
+                link = os.link
+                candidates = []
+
+                def change_earlier_then_fail(source, destination):
+                    candidates.append(source)
+                    if destination == self.paths[2]:
+                        earlier = Path(self.paths[0])
+                        if kind == "file":
+                            replacement = self.root / "concurrent.step"
+                            replacement.write_bytes(b"concurrent owner")
+                            os.replace(replacement, earlier)
+                        else:
+                            earlier.unlink()
+                            if kind == "symlink":
+                                # Following this link would falsely report our
+                                # published inode as still owning the path.
+                                earlier.symlink_to(candidates[0])
+                            elif kind == "directory":
+                                earlier.mkdir()
+                                (earlier / "keep.txt").write_bytes(b"concurrent owner")
+                        raise OSError("injected later installation failure")
+                    return link(source, destination)
+
+                with patch.object(self.engine.os, "link", side_effect=change_earlier_then_fail):
+                    with self.assertRaisesRegex(OSError, "later installation failure"):
+                        self.batch()
+                earlier = Path(self.paths[0])
+                if kind == "file":
+                    self.assertEqual(earlier.read_bytes(), b"concurrent owner")
+                elif kind == "symlink":
+                    self.assertTrue(earlier.is_symlink())
+                    self.assertEqual(os.readlink(earlier), candidates[0])
+                elif kind == "directory":
+                    self.assertEqual((earlier / "keep.txt").read_bytes(), b"concurrent owner")
+                else:
+                    self.assertFalse(earlier.exists())
+                self.assertFalse(Path(self.paths[1]).exists())
+                self.assertFalse(Path(self.paths[2]).exists())
+                self.assert_no_staging()
+
+    def test_replacement_during_rollback_withdrawal_is_restored_without_overwrite(self):
+        for restoration_collision in (False, True):
+            with self.subTest(restoration_collision=restoration_collision):
+                self.paths = self.engine._numbered_export_paths(str(
+                    self.root / ("rollback-withdraw-%s.step" % restoration_collision)), 3)
+                link, replace = os.link, os.replace
+                withdrawn = []
+
+                def fail_install_or_collide_on_restore(source, destination, **kwargs):
+                    if destination == self.paths[2]:
+                        raise OSError("injected later installation failure")
+                    if withdrawn and destination == self.paths[0] and restoration_collision:
+                        Path(destination).write_bytes(b"newest owner")
+                    return link(source, destination, **kwargs)
+
+                def replace_before_withdrawal(source, destination):
+                    if str(source) == self.paths[0]:
+                        other = self.root / "replacement.step"
+                        other.write_bytes(b"concurrent owner")
+                        replace(other, source)
+                        withdrawn.append(Path(destination))
+                    return replace(source, destination)
+
+                with patch.object(self.engine.os, "link", side_effect=fail_install_or_collide_on_restore), \
+                        patch.object(self.engine.os, "replace", side_effect=replace_before_withdrawal):
+                    error = RuntimeError if restoration_collision else OSError
+                    message = "Recovery copies are in" if restoration_collision else "later installation failure"
+                    with self.assertRaisesRegex(error, message) as caught:
+                        self.batch()
+                self.assertEqual(len(withdrawn), 1)
+                self.assertFalse(Path(self.paths[1]).exists())
+                self.assertFalse(Path(self.paths[2]).exists())
+                if restoration_collision:
+                    self.assertEqual(Path(self.paths[0]).read_bytes(), b"newest owner")
+                    self.assertEqual(withdrawn[0].read_bytes(), b"concurrent owner")
+                    self.assertIn(str(withdrawn[0].parent.parent), str(caught.exception))
+                else:
+                    self.assertEqual(Path(self.paths[0]).read_bytes(), b"concurrent owner")
+                    self.assert_no_staging()
+
     def test_numbered_collision_rejects_before_any_writer_is_called(self):
         Path(self.paths[1]).write_bytes(b"keep numbered output")
         self.assertFalse(self.base.exists())

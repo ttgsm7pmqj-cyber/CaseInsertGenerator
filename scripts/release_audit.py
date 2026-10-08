@@ -17,8 +17,8 @@ import zlib
 
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "0.1.1"
-RELEASE_DATE = "2026-09-05"
+VERSION = "0.1.2"
+RELEASE_DATE = "2026-10-07"
 REPOSITORY_URL = "https://github.com/ttgsm7pmqj-cyber/CaseInsertGenerator"
 
 FORBIDDEN_MARKERS = {

@@ -76,4 +76,4 @@ __all__ = [
     "show_dialog",
     "validate_project",
 ]
-__version__ = "0.1.1"
+__version__ = "0.1.2"

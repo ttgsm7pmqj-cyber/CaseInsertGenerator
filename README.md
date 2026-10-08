@@ -19,17 +19,26 @@ synthetic examples. The bundled presets are convenient demonstration envelopes,
 not commercial case dimensions and not physical-fit claims. Measure the inside
 of a real case and print a tolerance coupon before printing a full insert.
 
-Version 0.1.1 supports FreeCAD 1.1.3 through the 1.1.x series. Release
-validation targets FreeCAD 1.1.3.
+Version 0.1.2 is a proposed patch release. Package metadata permits FreeCAD
+1.1.3 through 1.1.x and Python 3.11 or newer. Current software validation was
+performed on FreeCAD 1.1.4 on macOS arm64; this is the tested platform.
+Current-candidate behavior on FreeCAD 1.1.3, Windows, and Linux is unverified.
+Earlier v0.1.1 checks on FreeCAD 1.1.3 are historical evidence only.
 
 ## Install locally
 
-1. Download or clone this repository.
+1. Download the release ZIP and its SHA-256 checksum, or clone this repository.
+   Verify the ZIP checksum before extracting it; the release archive has one
+   `CaseInsertGenerator/` top-level folder.
 2. Place the `CaseInsertGenerator` folder in FreeCAD's user `Mod` directory.
 3. Restart FreeCAD and choose **Case Insert Generator** from the workbench list.
 
 The compatibility launcher remains available through **Macro → Macros…** by
 running `CaseInsertGenerator.FCMacro` after the workbench is installed.
+
+To find the user data directory, open FreeCAD’s Python console and run
+`print(App.getUserAppDataDir())`. Install into its `Mod` subfolder. Avoid adding
+an extra nested `CaseInsertGenerator` folder when extracting the archive.
 
 ## Three-tab workflow
 
@@ -119,6 +128,18 @@ compatibility. Product names and trademarks remain the property of their
 respective owners, and compatibility wording does not grant permission to copy
 restricted drawings or geometry.
 
+## Export destination support
+
+New STL/STEP files are published using filesystem hard links so an unconfirmed
+file appearing during export cannot be overwritten. Exports fail safely when
+the destination filesystem does not support hard links; FAT/exFAT destinations
+are not supported by this publication method. Export to tested local storage
+first, then copy the completed files using your file manager. Network shares
+and removable filesystems have not been validated. Explicitly confirmed
+overwrite paths may be replaced; avoid concurrent editing of those files.
+FCStd saving uses FreeCAD’s save operation and is separate from the STL/STEP
+staged-export recovery mechanism.
+
 ## Safety and limitations
 
 - Generated geometry and exports do not prove physical fit, printer tolerance,
@@ -144,12 +165,17 @@ reuse lint
 ```
 
 With this checkout installed as the workbench, run
-`RunRegressionChecks.FCMacro` from **Macro → Macros…** in FreeCAD 1.1.3. It runs
+`RunRegressionChecks.FCMacro` from **Macro → Macros…** in the tested
+FreeCAD 1.1.4 environment. It runs
 the CAD integration, input-validation, recovery, and GUI state suites and writes
 `artifacts/regressions/results.json` plus GUI screenshots. It leaves FreeCAD
 open and uses temporary test documents. Each run keeps its own report and
 screenshots in a dated subfolder. Run the separate `tests/gui_smoke.py`
 script in a fresh FreeCAD profile when verifying installation and lazy startup.
+On 7 October 2026 current-main validation passed 162 standalone tests and 63
+native CAD/GUI checks (23 integration, 5 validation, 14 recovery, 21 GUI state),
+including STEP/STL/FCStd export and reopen. The extracted candidate package
+must pass these checks before publication. Physical fit remains untested.
 
 Python callers of `engine.export_stl()` and `engine.export_step()` must pass
 `overwrite=True` to replace existing files. `engine.export_paths()` returns the

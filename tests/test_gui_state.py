@@ -312,6 +312,59 @@ class DerivedLayoutInsetTests(unittest.TestCase):
             self.assertNotEqual(original, controller._request_signature(
                 controller._current_request()))
 
+    def test_current_request_preserves_explicit_conservative_inset_and_precision(self):
+        self.controller.mode_combo.currentIndex = lambda: 0
+        self.controller._base_project["case"]["layout_inset"] = 20.12345
+        with patch.object(engine, "_case_layout_inset", return_value=3.0):
+            mode, spec = self.controller._current_request()
+        self.assertEqual(mode, 0)
+        self.assertEqual(spec["case"]["layout_inset"], 20.12345)
+        self.controller.project_canvas.set_case.assert_called_with(100.0, 80.0, 20.12345)
+        self.assertEqual(layout_project(spec, "balanced").placed_count, 0)
+
+    def test_smaller_geometry_keeps_explicit_conservative_margin(self):
+        self.controller.mode_combo.currentIndex = lambda: 0
+        self.controller._base_project["case"]["layout_inset"] = 20.12345
+        self.controls["layers"]["enabled"] = False
+        self.controls["case"]["corner_radius"] = 5.0
+        with patch.object(engine, "_case_layout_inset",
+                          side_effect=lambda params, _whole: params["corner_radius"] * 0.3):
+            _mode, spec = self.controller._current_request()
+        self.assertEqual(spec["case"]["layout_inset"], 20.12345)
+        self.controller.project_canvas.set_case.assert_called_with(100.0, 80.0, 20.12345)
+
+    def test_explicit_margin_is_a_floor_when_geometry_changes_repeatedly(self):
+        self.controller.mode_combo.currentIndex = lambda: 0
+        self.controller._base_project["case"]["layout_inset"] = 15.12345
+        with patch.object(engine, "_case_layout_inset",
+                          side_effect=lambda params, _whole: params["corner_radius"] * 0.3):
+            self.controls["case"]["corner_radius"] = 20.0
+            _mode, larger = self.controller._current_request()
+            self.controls["case"]["corner_radius"] = 5.0
+            _mode, smaller = self.controller._current_request()
+        self.assertEqual(larger["case"]["layout_inset"], 16.8)
+        self.assertEqual(smaller["case"]["layout_inset"], 15.12345)
+        self.assertEqual(self.controller._base_project["case"]["layout_inset"], 15.12345)
+
+    def test_rounded_derived_inset_is_refreshed_after_disabling_layers(self):
+        self.controller.mode_combo.currentIndex = lambda: 0
+        self.controls["layers"]["enabled"] = False
+        with patch.object(engine, "_case_layout_inset", return_value=2.9996):
+            _mode, spec = self.controller._current_request()
+        self.assertEqual(spec["case"]["layout_inset"], 3.0)
+
+    def test_missing_or_insufficient_stored_inset_uses_geometry_minimum(self):
+        self.controller.mode_combo.currentIndex = lambda: 0
+        for stored_inset in (None, 0.0, 2.0):
+            with self.subTest(stored_inset=stored_inset):
+                self.controller._base_project["case"]["layout_inset"] = stored_inset
+                if stored_inset is None:
+                    self.controller._base_project["case"].pop("layout_inset")
+                with patch.object(engine, "_case_layout_inset", return_value=3.0):
+                    _mode, spec = self.controller._current_request()
+                self.assertEqual(spec["case"]["layout_inset"], 13.8)
+
+
 
 if __name__ == "__main__":
     unittest.main()

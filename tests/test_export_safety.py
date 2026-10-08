@@ -476,6 +476,30 @@ class ExportSafetyTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "No printable generated parts"):
                 self.engine.export_paths(self.base)
 
+    def test_late_collision_rolls_back_new_outputs_without_removing_collision(self):
+        link, replace = os.link, os.replace
+        for overwrite in (False, True):
+            with self.subTest(overwrite=overwrite):
+                self.paths = self.engine._numbered_export_paths(
+                    str(self.root / ("late-%s.step" % overwrite)), 3)
+
+                def install_file(install, source, destination):
+                    if destination == self.paths[2]:
+                        Path(destination).write_bytes(b"another operation")
+                    return install(source, destination)
+
+                with patch.object(self.engine.os, "link", side_effect=lambda src, dst:
+                                  install_file(link, src, dst)), \
+                        patch.object(self.engine.os, "replace", side_effect=lambda src, dst:
+                                     install_file(replace, src, dst)):
+                    with self.assertRaises(FileExistsError):
+                        self.batch(overwrite=overwrite)
+                self.assertFalse(Path(self.paths[0]).exists())
+                self.assertFalse(Path(self.paths[1]).exists())
+                self.assertEqual(Path(self.paths[2]).read_bytes(), b"another operation")
+                self.assert_no_staging()
+
+
 
 if __name__ == "__main__":
     unittest.main()

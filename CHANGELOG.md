@@ -2,6 +2,19 @@
 
 # Changelog
 
+## [0.1.2] - 2026-10-07 (proposed; unpublished)
+
+- Publish new STL/STEP files without replacing late unconfirmed collisions;
+  preserve concurrent replacements during rollback and retain recovery copies
+  when restoration cannot complete.
+- Reject malformed, Boolean, and nonfinite catalog dimensions.
+- Preserve explicit conservative layout margins while allowing derived margins
+  to follow geometry edits, including persistence across save/reopen.
+- Treat bundled examples as audited historical generation snapshots and verify
+  their saved artifact hashes.
+- Document tested FreeCAD 1.1.4/macOS arm64, filesystem export requirements,
+  unverified platforms and minimum-version behavior, and physical-fit limits.
+
 ## [0.1.1] - 2026-09-05
 
 - Bind each dialog to its document, preserve current edits when saving, and
